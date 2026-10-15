@@ -43,9 +43,21 @@ export function Muted({ children, style }: { children: ReactNode; style?: object
   return <Text style={[styles.muted, { color: theme.textSecondary }, style]}>{children}</Text>;
 }
 
-export function Body({ children, style }: { children: ReactNode; style?: object }) {
+export function Body({
+  children,
+  style,
+  onPress,
+}: {
+  children: ReactNode;
+  style?: object;
+  onPress?: () => void;
+}) {
   const theme = useTheme();
-  return <Text style={[styles.body, { color: theme.text }, style]}>{children}</Text>;
+  return (
+    <Text style={[styles.body, { color: theme.text }, style]} onPress={onPress} suppressHighlighting={!onPress}>
+      {children}
+    </Text>
+  );
 }
 
 export function Card({ children, style }: { children: ReactNode; style?: ViewStyle }) {

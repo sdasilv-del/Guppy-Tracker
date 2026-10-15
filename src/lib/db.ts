@@ -1,7 +1,18 @@
 import { decode } from 'base64-arraybuffer';
 
 import { supabase } from '@/lib/supabase';
-import type { Fish, FishMove, FishPhoto, Tank, WaterChange, WaterTest } from '@/lib/types';
+import type {
+  BreedingGroup,
+  Fish,
+  FishMove,
+  FishPhoto,
+  Spawn,
+  SpawnEvent,
+  Tank,
+  Trait,
+  WaterChange,
+  WaterTest,
+} from '@/lib/types';
 
 // Throws the Supabase error so screens can show it.
 function must<T>(result: { data: T | null; error: { message: string } | null }): T {
@@ -205,4 +216,160 @@ export async function signedPhotoUrls(paths: string[]): Promise<Record<string, s
   const out: Record<string, string> = {};
   for (const item of data) if (item.path && item.signedUrl) out[item.path] = item.signedUrl;
   return out;
+}
+
+// Traits ----------------------------------------------------------------------
+
+export async function listTraits(): Promise<Trait[]> {
+  return must(await supabase.from('traits').select('id, name').order('name'));
+}
+
+export async function createTrait(name: string): Promise<Trait> {
+  return must(await supabase.from('traits').insert({ name: name.trim() }).select('id, name').single());
+}
+
+// Breeding groups -----------------------------------------------------------------
+
+export async function listGroups(): Promise<BreedingGroup[]> {
+  return must(await supabase.from('breeding_groups').select('*').order('seq', { ascending: false }));
+}
+
+export async function getGroup(id: string): Promise<BreedingGroup | null> {
+  return must(await supabase.from('breeding_groups').select('*').eq('id', id).maybeSingle());
+}
+
+export type GroupInput = Omit<BreedingGroup, 'id' | 'group_code' | 'created_at'>;
+
+export async function createGroup(input: GroupInput): Promise<BreedingGroup> {
+  return must(await supabase.from('breeding_groups').insert(input).select().single());
+}
+
+export async function updateGroup(id: string, input: Partial<GroupInput>): Promise<void> {
+  must(await supabase.from('breeding_groups').update(input).eq('id', id));
+}
+
+export async function deleteGroup(id: string): Promise<void> {
+  must(await supabase.from('breeding_groups').delete().eq('id', id));
+}
+
+// Member fish ids for every group, keyed by group id.
+export async function groupMembers(groupIds?: string[]): Promise<Record<string, string[]>> {
+  let query = supabase.from('breeding_group_members').select('group_id, fish_id');
+  if (groupIds) query = query.in('group_id', groupIds);
+  const rows: { group_id: string; fish_id: string }[] = must(await query);
+  const out: Record<string, string[]> = {};
+  for (const r of rows) (out[r.group_id] ??= []).push(r.fish_id);
+  return out;
+}
+
+export async function groupTraitIds(groupId: string): Promise<string[]> {
+  const rows: { trait_id: string }[] = must(
+    await supabase.from('breeding_group_traits').select('trait_id').eq('group_id', groupId),
+  );
+  return rows.map((r) => r.trait_id);
+}
+
+// Replaces a group's rows in a link table with the given ids.
+async function setLinks(
+  table: 'breeding_group_members' | 'breeding_group_traits',
+  column: 'fish_id' | 'trait_id',
+  groupId: string,
+  current: string[],
+  next: string[],
+): Promise<void> {
+  const removed = current.filter((id) => !next.includes(id));
+  const added = next.filter((id) => !current.includes(id));
+  if (removed.length > 0) {
+    must(await supabase.from(table).delete().eq('group_id', groupId).in(column, removed));
+  }
+  if (added.length > 0) {
+    must(await supabase.from(table).insert(added.map((id) => ({ group_id: groupId, [column]: id }))));
+  }
+}
+
+export async function setGroupMembers(groupId: string, fishIds: string[]): Promise<void> {
+  const current = (await groupMembers([groupId]))[groupId] ?? [];
+  await setLinks('breeding_group_members', 'fish_id', groupId, current, fishIds);
+}
+
+export async function setGroupTraits(groupId: string, traitIds: string[]): Promise<void> {
+  const current = await groupTraitIds(groupId);
+  await setLinks('breeding_group_traits', 'trait_id', groupId, current, traitIds);
+}
+
+// Groups a fish belongs to.
+export async function groupIdsForFish(fishId: string): Promise<string[]> {
+  const rows: { group_id: string }[] = must(
+    await supabase.from('breeding_group_members').select('group_id').eq('fish_id', fishId),
+  );
+  return rows.map((r) => r.group_id);
+}
+
+// Spawns ------------------------------------------------------------------------------
+
+export async function listSpawns(): Promise<Spawn[]> {
+  return must(
+    await supabase
+      .from('spawns')
+      .select('*')
+      .order('born_on', { ascending: false })
+      .order('seq', { ascending: false }),
+  );
+}
+
+export async function getSpawn(id: string): Promise<Spawn | null> {
+  return must(await supabase.from('spawns').select('*').eq('id', id).maybeSingle());
+}
+
+export type SpawnInput = Omit<Spawn, 'id' | 'spawn_code' | 'created_at'>;
+
+export async function createSpawn(input: SpawnInput): Promise<Spawn> {
+  return must(await supabase.from('spawns').insert(input).select().single());
+}
+
+export async function updateSpawn(id: string, input: Partial<SpawnInput>): Promise<void> {
+  must(await supabase.from('spawns').update(input).eq('id', id));
+}
+
+export async function deleteSpawn(id: string): Promise<void> {
+  must(await supabase.from('spawns').delete().eq('id', id));
+}
+
+// Batch log entries, oldest first. Pass spawn ids to limit, or nothing for all spawns.
+export async function listSpawnEvents(spawnIds?: string[]): Promise<SpawnEvent[]> {
+  let query = supabase.from('spawn_events').select('*');
+  if (spawnIds) query = query.in('spawn_id', spawnIds);
+  return must(await query.order('happened_on').order('created_at'));
+}
+
+export async function getSpawnEvent(id: string): Promise<SpawnEvent | null> {
+  return must(await supabase.from('spawn_events').select('*').eq('id', id).maybeSingle());
+}
+
+export type SpawnEventInput = Omit<SpawnEvent, 'id' | 'created_at'>;
+
+export async function saveSpawnEvent(id: string | null, input: SpawnEventInput): Promise<void> {
+  if (id) must(await supabase.from('spawn_events').update(input).eq('id', id));
+  else must(await supabase.from('spawn_events').insert(input));
+}
+
+export async function deleteSpawnEvent(id: string): Promise<void> {
+  must(await supabase.from('spawn_events').delete().eq('id', id));
+}
+
+// Parts of batches moved into a tank, for the tank page.
+export async function spawnMovesIntoTank(tankId: string): Promise<SpawnEvent[]> {
+  return must(
+    await supabase
+      .from('spawn_events')
+      .select('*')
+      .eq('kind', 'move')
+      .eq('to_tank_id', tankId)
+      .order('happened_on', { ascending: false }),
+  );
+}
+
+// Fish picked from a spawn.
+export async function listPicks(spawnId: string): Promise<Fish[]> {
+  return must(await supabase.from('fish').select('*').eq('spawn_id', spawnId).order('created_at'));
 }

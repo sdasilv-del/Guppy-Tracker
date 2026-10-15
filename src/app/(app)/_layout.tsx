@@ -19,6 +19,16 @@ export default function AppLayout() {
       <Stack.Screen name="fish/[id]/index" options={{ title: 'Fish' }} />
       <Stack.Screen name="fish/[id]/edit" options={{ title: 'Edit fish' }} />
       <Stack.Screen name="fish/[id]/move" options={{ title: 'Move fish' }} />
+      <Stack.Screen name="groups/index" options={{ title: 'Breeding groups' }} />
+      <Stack.Screen name="groups/new" options={{ title: 'New breeding group' }} />
+      <Stack.Screen name="groups/[id]/index" options={{ title: 'Breeding group' }} />
+      <Stack.Screen name="groups/[id]/edit" options={{ title: 'Edit group' }} />
+      <Stack.Screen name="spawns/index" options={{ title: 'Spawns' }} />
+      <Stack.Screen name="spawns/new" options={{ title: 'New spawn' }} />
+      <Stack.Screen name="spawns/[id]/index" options={{ title: 'Spawn' }} />
+      <Stack.Screen name="spawns/[id]/edit" options={{ title: 'Edit spawn' }} />
+      <Stack.Screen name="spawns/[id]/event" options={{ title: 'Batch log' }} />
+      <Stack.Screen name="spawns/[id]/pick" options={{ title: 'Pick a fish' }} />
     </Stack>
   );
 }
