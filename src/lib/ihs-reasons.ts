@@ -76,7 +76,8 @@ export const MALE_REASONS: Record<string, CategoryReasons> = {
       { id: 'bf_curved', label: 'Curved body', group: 'straightness' },
       { id: 'bf_reduced_control', label: 'Reduced control of body movement' },
       { id: 'bf_dq_humpback', label: 'Disqualified: Humpback', disqualifies: true },
-      { id: 'bf_dq_flat', label: 'Disqualified: Flat body', disqualifies: true },
+      // Kept under its old id so earlier evaluations still show it. IHS item 31 deducts up to 4 for it.
+      { id: 'bf_dq_flat', label: 'Flat body (emaciated), deduct up to 4' },
     ],
   },
   body_colour: {
