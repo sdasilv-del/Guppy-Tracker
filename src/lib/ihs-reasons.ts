@@ -60,7 +60,9 @@ export const MALE_REASONS: Record<string, CategoryReasons> = {
     ],
   },
   body_form: {
-    allocation: 'Outline up to 2 · Body ratios up to 2 (good 2, medium 1, bad 0) · Body display up to 4',
+    // IHS 2023 item 31.
+    allocation:
+      'IHS deductions (form item 31), up to 8 in total: not streamlined or bulging up to 5 · caudal peduncle too broad up to 2 · body too flat (emaciated) up to 4 · round back up to 2 · strong bend up to 5 · deformed gonopodium up to 3. Humpback, hollow back or a curved spine disqualify.',
     reasons: [
       { id: 'bf_outline_correct', label: 'Correct body outline', group: 'outline' },
       { id: 'bf_outline_minor', label: 'Minor outline faults', group: 'outline' },
