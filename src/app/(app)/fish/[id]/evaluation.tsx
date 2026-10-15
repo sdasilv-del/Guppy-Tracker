@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { Alert, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { pickPhoto, type PickedPhoto } from '@/components/fish-form';
+import { FemaleScoreSheet, type FemaleSheetState, femaleTotals } from '@/components/female-score-sheet';
 import { ReasonSelect } from '@/components/reason-select';
 import {
   Body,
@@ -32,17 +33,20 @@ import {
   TAIL_STANDARDS,
 } from '@/lib/constants';
 import { useAuth } from '@/lib/auth';
+import { DISQUALIFY_KEY, DISQUALIFY_OTHER, FEMALE_DISQUALIFY, femaleReasonOptions } from '@/lib/ihs-female';
 import { categoryGuide, type CategoryReasons, disqualifications, MALE_REASONS, reasonById } from '@/lib/ihs-reasons';
 import {
   deleteEvaluation,
   getEvaluation,
   getFish,
+  listFish,
   removeStoredPhotos,
   saveEvaluation,
   signedPhotoUrls,
   uploadPhoto,
 } from '@/lib/db';
 import { blankToNull, numberText, parseNumber, todayISO } from '@/lib/format';
+import { INACTIVE_STATUSES } from '@/lib/constants';
 import type { Evaluation, Fish } from '@/lib/types';
 import { useTheme } from '@/hooks/use-theme';
 
@@ -93,7 +97,6 @@ function ScoreRow({
       ))}
       {reasonOptions ? (
         <ReasonSelect
-          categoryKey={category.key}
           title={`${category.part}: ${category.label}`}
           options={reasonOptions}
           selected={reasons}
@@ -127,6 +130,10 @@ export default function EvaluationScreen() {
   const [scores, setScores] = useState<Record<string, string>>({});
   const [scoreNotes, setScoreNotes] = useState<Record<string, string>>({});
   const [scoreReasons, setScoreReasons] = useState<Record<string, string[]>>({});
+  const [maleId, setMaleId] = useState<string | null>(null);
+  const [femaleMm, setFemaleMm] = useState('');
+  const [maleMm, setMaleMm] = useState('');
+  const [males, setMales] = useState<Fish[]>([]);
   const [notes, setNotes] = useState('');
   const [photo, setPhoto] = useState<PickedPhoto | null>(null);
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
@@ -134,9 +141,11 @@ export default function EvaluationScreen() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    Promise.all([getFish(id), evalId ? getEvaluation(evalId) : null])
-      .then(async ([f, e]) => {
+    Promise.all([getFish(id), evalId ? getEvaluation(evalId) : null, listFish()])
+      .then(async ([f, e, all]) => {
         setFish(f);
+        // Males that can be compared with a female: those still in the fish room, plus one already linked.
+        setMales(all.filter((m) => m.sex === 'M' && (!INACTIVE_STATUSES.includes(m.status) || m.id === e?.male_id)));
         if (e) {
           setExisting(e);
           setKind(e.kind);
@@ -147,6 +156,9 @@ export default function EvaluationScreen() {
           setScores(Object.fromEntries(Object.entries(e.scores).map(([k, v]) => [k, numberText(v)])));
           setScoreNotes(e.score_notes);
           setScoreReasons(e.score_reasons ?? {});
+          setMaleId(e.male_id);
+          setFemaleMm(numberText(e.female_length_mm));
+          setMaleMm(numberText(e.male_length_mm));
           setNotes(e.notes ?? '');
           if (e.photo_path) setPhotoUrl((await signedPhotoUrls([e.photo_path]))[e.photo_path] ?? null);
         }
@@ -177,9 +189,29 @@ export default function EvaluationScreen() {
   const pointsFor = (list: IhsCategory[]) =>
     Math.round(list.reduce((sum, c) => sum + (parseNumber(scores[c.key] ?? '') ?? 0), 0) * 10) / 10;
   const total = pointsFor(categories);
-  // Reason lists are on the male sheet only.
   const reasonOptions = (key: string) => (sex === 'M' ? MALE_REASONS[key] : undefined);
-  const dq = sex === 'M' ? disqualifications(scoreReasons) : [];
+  const dq =
+    sex === 'M'
+      ? disqualifications(scoreReasons)
+      : FEMALE_DISQUALIFY.reasons.filter((r) => (scoreReasons[DISQUALIFY_KEY] ?? []).includes(r.id));
+  const dqText = dq.map((r) => r.label.replace('Disqualified: ', '').replace(' — explanation required', '')).join(', ');
+  const female = sex === 'F' ? femaleTotals(scores) : null;
+  const femaleState: FemaleSheetState = {
+    scores,
+    reasons: scoreReasons,
+    notes: scoreNotes,
+    maleId,
+    femaleMm,
+    maleMm,
+  };
+  function changeFemale(next: Partial<FemaleSheetState>) {
+    if (next.scores) setScores(next.scores);
+    if (next.reasons) setScoreReasons(next.reasons);
+    if (next.notes) setScoreNotes(next.notes);
+    if (next.maleId !== undefined) setMaleId(next.maleId);
+    if (next.femaleMm !== undefined) setFemaleMm(next.femaleMm);
+    if (next.maleMm !== undefined) setMaleMm(next.maleMm);
+  }
 
   function setReasons(key: string, next: string[]) {
     setScoreReasons({ ...scoreReasons, [key]: next });
@@ -200,14 +232,28 @@ export default function EvaluationScreen() {
       }
       parsed[c.key] = n;
     }
+    // Only reasons that belong to this sheet are saved, so male and female lists never mix.
+    const reasonKeys = sex === 'F' ? [...categories.map((c) => c.key), DISQUALIFY_KEY] : categories.map((c) => c.key);
+    const isReason = (key: string, rid: string) =>
+      sex === 'M' ? !!reasonById(key, rid) : !!femaleReasonOptions(key)?.reasons.some((r) => r.id === rid);
     const reasonsByKey = Object.fromEntries(
-      categories
-        .map((c) => [c.key, (scoreReasons[c.key] ?? []).filter((id) => reasonById(c.key, id))] as const)
-        .filter(([, ids]) => sex === 'M' && ids.length > 0),
+      reasonKeys
+        .map((key) => [key, (scoreReasons[key] ?? []).filter((rid) => isReason(key, rid))] as const)
+        .filter(([, ids]) => ids.length > 0),
     );
     const notesByKey = Object.fromEntries(
-      categories.map((c) => [c.key, scoreNotes[c.key]?.trim() ?? '']).filter(([, v]) => v !== ''),
+      reasonKeys.map((key) => [key, scoreNotes[key]?.trim() ?? '']).filter(([, v]) => v !== ''),
     );
+    if (sex === 'F' && (reasonsByKey[DISQUALIFY_KEY] ?? []).includes(DISQUALIFY_OTHER) && !notesByKey[DISQUALIFY_KEY]) {
+      setError('Explain the "Other" disqualification reason.');
+      return;
+    }
+    const femaleLength = parseNumber(femaleMm);
+    const maleLength = parseNumber(maleMm);
+    if (sex === 'F' && [femaleLength, maleLength].some((n, i) => [femaleMm, maleMm][i].trim() !== '' && (n === null || n <= 0))) {
+      setError('Body lengths must be numbers in millimetres.');
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
@@ -226,6 +272,9 @@ export default function EvaluationScreen() {
         scores: parsed,
         score_notes: notesByKey,
         score_reasons: reasonsByKey,
+        male_id: sex === 'F' ? maleId : null,
+        female_length_mm: sex === 'F' ? femaleLength : null,
+        male_length_mm: sex === 'F' ? maleLength : null,
         placement: kind === 'official' ? blankToNull(placement) : null,
         photo_path: photoPath,
         notes: blankToNull(notes),
@@ -263,6 +312,7 @@ export default function EvaluationScreen() {
   return (
     <Screen>
       <Stack.Screen options={{ title: evalId ? 'Edit evaluation' : 'New evaluation' }} />
+      {sex === 'F' ? <Text style={[styles.sheetTitle, { color: theme.text }]}>Female Guppy Evaluation</Text> : null}
       <Card>
         <InfoRow label="Fish" value={fish.fish_code} />
         <InfoRow label="Class" value={labelOf(TAIL_STANDARDS, klass.tail_standard as Fish['tail_standard'])} />
@@ -272,10 +322,12 @@ export default function EvaluationScreen() {
 
       {dq.length > 0 ? (
         <Card style={{ borderWidth: 1, borderColor: theme.danger }}>
-          <Body style={[styles.dq, { color: theme.danger }]}>
-            Disqualified: {dq.map((r) => r.label.replace('Disqualified: ', '')).join(', ')}
-          </Body>
-          <Muted>Remove the reason under Body form if this was chosen by mistake.</Muted>
+          <Body style={[styles.dq, { color: theme.danger }]}>Disqualified: {dqText}</Body>
+          <Muted>
+            {sex === 'M'
+              ? 'Remove the reason under Body form if this was chosen by mistake.'
+              : 'Remove the reason under Disqualify entry if this was chosen by mistake.'}
+          </Muted>
         </Card>
       ) : null}
 
@@ -289,7 +341,9 @@ export default function EvaluationScreen() {
         placeholder="Name"
       />
 
-      {parts.map((part) => (
+      {sex === 'F' ? <FemaleScoreSheet state={femaleState} onChange={changeFemale} males={males} /> : null}
+
+      {sex === 'M' && parts.map((part) => (
         <Card key={part}>
           <View style={styles.partHeader}>
             <Heading>{part}</Heading>
@@ -324,12 +378,16 @@ export default function EvaluationScreen() {
       ))}
 
       <Card style={styles.totalCard}>
-        <Body style={styles.total}>
+        {dq.length > 0 ? <Body style={[styles.total, { color: theme.danger }]}>Disqualified</Body> : null}
+        <Body style={dq.length > 0 ? styles.voidTotal : styles.total}>
           {total} / {ihsMaxTotal(sex)}
         </Body>
-        <Muted>Total, added up from the scores above</Muted>
-        {dq.length > 0 ? (
-          <Body style={[styles.dq, { color: theme.danger }]}>Disqualified: {dq.map((r) => r.label.replace('Disqualified: ', '')).join(', ')}</Body>
+        <Muted>
+          {dq.length > 0 ? 'Not a valid final result, because the entry is disqualified' : 'Total, added up from the scores above'}
+        </Muted>
+        {dq.length > 0 ? <Body style={[styles.dq, { color: theme.danger }]}>{dqText}</Body> : null}
+        {female && female.missing.length > 0 ? (
+          <Body style={styles.dq}>Incomplete: {female.missing.map((c) => c.label).join(', ')} not scored yet</Body>
         ) : null}
       </Card>
 
@@ -367,6 +425,8 @@ const styles = StyleSheet.create({
   max: { width: 36, fontSize: 15 },
   totalCard: { alignItems: 'center', gap: 2 },
   total: { fontSize: 32, lineHeight: 38, fontWeight: '700' },
+  voidTotal: { fontSize: 20, lineHeight: 26, textDecorationLine: 'line-through' },
+  sheetTitle: { fontSize: 24, fontWeight: '800' },
   photo: { width: '100%', aspectRatio: 4 / 3, borderRadius: 12 },
   buttons: { flexDirection: 'row', gap: Spacing.two },
 });

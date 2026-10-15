@@ -9,14 +9,14 @@ import { useTheme } from '@/hooks/use-theme';
 
 // A "Reason for score" dropdown: opens a list to pick from, and shows each choice as a removable chip.
 export function ReasonSelect({
-  categoryKey,
   title,
+  placeholder = 'Reason for score',
   options,
   selected,
   onChange,
 }: {
-  categoryKey: string;
   title: string;
+  placeholder?: string;
   options: CategoryReasons;
   selected: string[];
   onChange: (next: string[]) => void;
@@ -36,7 +36,7 @@ export function ReasonSelect({
         style={[styles.field, { borderColor: theme.border }]}>
         <Text style={{ color: theme.textSecondary, fontSize: 14, flex: 1 }}>
           {chosen.length === 0
-            ? 'Reason for score'
+            ? placeholder
             : options.single
               ? 'Change reason'
               : 'Add or change reasons'}
@@ -74,15 +74,19 @@ export function ReasonSelect({
             {options.single ? 'Choose one.' : 'Choose every reason that applies.'}
           </Text>
           <ScrollView contentContainerStyle={styles.list}>
-            {options.reasons.map((r) => {
+            {options.reasons.map((r, i) => {
               const isSelected = selected.includes(r.id);
+              const startsSection = r.section && r.section !== options.reasons[i - 1]?.section;
               return (
+                <View key={r.id} style={styles.optionWrap}>
+                {startsSection ? (
+                  <Text style={[styles.section, { color: theme.textSecondary }]}>{r.section}</Text>
+                ) : null}
                 <Pressable
-                  key={r.id}
                   accessibilityRole={options.single ? 'radio' : 'checkbox'}
                   accessibilityState={{ checked: isSelected }}
                   onPress={() => {
-                    const next = toggleReason(categoryKey, selected, r.id);
+                    const next = toggleReason(options, selected, r.id);
                     onChange(next);
                     if (options.single && next.length > 0) setOpen(false);
                   }}
@@ -104,6 +108,7 @@ export function ReasonSelect({
                     {r.label}
                   </Text>
                 </Pressable>
+                </View>
               );
             })}
           </ScrollView>
@@ -149,6 +154,8 @@ const styles = StyleSheet.create({
     borderWidth: 2,
   },
   optionText: { flex: 1, fontSize: 15 },
+  optionWrap: { gap: Spacing.two },
+  section: { fontSize: 13, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.4, marginTop: Spacing.two },
   check: { width: 24, height: 24, borderRadius: 6, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
   radio: { width: 24, height: 24, borderRadius: 12, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
 });

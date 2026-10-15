@@ -31,7 +31,7 @@ import {
   TAIL_STANDARDS,
 } from '@/lib/constants';
 import { useAuth } from '@/lib/auth';
-import { disqualifications } from '@/lib/ihs-reasons';
+import { isDisqualified } from '@/lib/ihs-reasons';
 import {
   addFishPhoto,
   deleteFishPhoto,
@@ -249,7 +249,7 @@ export default function FishScreen() {
             key={e.id}
             title={`${e.total} / ${ihsMaxTotal(e.sex)} · ${formatDate(e.evaluated_on)}`}
             subtitle={[
-              disqualifications(e.score_reasons ?? {}).length > 0 ? 'Disqualified' : null,
+              isDisqualified(e.sex, e.score_reasons ?? {}) ? 'Disqualified' : null,
               labelOf(EVALUATION_KINDS, e.kind),
               e.event,
               e.placement,

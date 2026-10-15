@@ -13,6 +13,8 @@ export type Reason = {
   points?: number;
   // Choosing this disqualifies the entry.
   disqualifies?: boolean;
+  // A heading the option is listed under, for long lists.
+  section?: string;
 };
 
 export type CategoryReasons = {
@@ -158,10 +160,9 @@ export function reasonById(categoryKey: string, id: string): Reason | undefined 
 }
 
 // Applies a tap on a reason: toggles it, and drops other reasons it can't sit alongside.
-export function toggleReason(categoryKey: string, selected: string[], id: string): string[] {
-  const def = MALE_REASONS[categoryKey];
-  const reason = def?.reasons.find((r) => r.id === id);
-  if (!def || !reason) return selected;
+export function toggleReason(def: CategoryReasons, selected: string[], id: string): string[] {
+  const reason = def.reasons.find((r) => r.id === id);
+  if (!reason) return selected;
   if (selected.includes(id)) return selected.filter((s) => s !== id);
   if (def.single) return [id];
   const kept = reason.group
@@ -175,6 +176,12 @@ export function disqualifications(reasons: Record<string, string[]>): Reason[] {
   return Object.entries(reasons).flatMap(([key, ids]) =>
     ids.map((id) => reasonById(key, id)).filter((r): r is Reason => !!r?.disqualifies),
   );
+}
+
+// Whether a saved evaluation is disqualified: a male disqualifying reason, or any female "Disqualify entry" reason.
+export function isDisqualified(sex: 'M' | 'F', reasons: Record<string, string[]>): boolean {
+  if (sex === 'F') return (reasons.disqualify ?? []).length > 0;
+  return disqualifications(reasons).length > 0;
 }
 
 // IHS 2023 guidance that depends on the fish's tail standard, from the standard descriptions.

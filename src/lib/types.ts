@@ -156,6 +156,9 @@ export type Evaluation = {
   score_notes: Record<string, string>;
   score_reasons: Record<string, string[]>;
   total: number;
+  male_id: string | null;
+  female_length_mm: number | null;
+  male_length_mm: number | null;
   placement: string | null;
   photo_path: string | null;
   notes: string | null;
