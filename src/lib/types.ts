@@ -1,0 +1,80 @@
+import type { FishStatus, Origin, Sex, TailStandard, TankPurpose } from '@/lib/constants';
+
+export type Profile = {
+  id: string;
+  display_name: string;
+  breeder_initials: string;
+  club: string | null;
+  country: string | null;
+};
+
+export type Tank = {
+  id: string;
+  tank_code: string;
+  name: string | null;
+  size_gallons: number | null;
+  purpose: TankPurpose;
+  notes: string | null;
+  created_at: string;
+};
+
+export type WaterTest = {
+  id: string;
+  tank_id: string;
+  tested_on: string;
+  temperature_c: number | null;
+  ph: number | null;
+  ammonia: number | null;
+  nitrite: number | null;
+  nitrate: number | null;
+  gh: number | null;
+  kh: number | null;
+  notes: string | null;
+};
+
+export type WaterChange = {
+  id: string;
+  tank_id: string;
+  changed_on: string;
+  percent: number | null;
+  notes: string | null;
+};
+
+export type Fish = {
+  id: string;
+  fish_code: string;
+  previous_codes: string[];
+  name: string | null;
+  sex: Sex;
+  tail_standard: TailStandard;
+  base_colour: number | null;
+  cover_colours: number[];
+  strain: string | null;
+  date_of_birth: string | null;
+  generation: string | null;
+  origin: Origin;
+  foundation: boolean;
+  original_breeder: string | null;
+  sire_id: string | null;
+  dam_id: string | null;
+  tank_id: string | null;
+  status: FishStatus;
+  notes: string | null;
+  created_at: string;
+};
+
+export type FishPhoto = {
+  id: string;
+  fish_id: string;
+  storage_path: string;
+  taken_on: string;
+  created_at: string;
+};
+
+export type FishMove = {
+  id: string;
+  fish_id: string;
+  from_tank_id: string | null;
+  to_tank_id: string | null;
+  moved_at: string;
+};
