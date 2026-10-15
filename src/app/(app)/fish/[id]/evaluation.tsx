@@ -291,11 +291,7 @@ export default function EvaluationScreen() {
       {dq.length > 0 ? (
         <Card style={{ borderWidth: 1, borderColor: theme.danger }}>
           <Body style={[styles.dq, { color: theme.danger }]}>Disqualified: {dqText}</Body>
-          <Muted>
-            {sex === 'M'
-              ? 'Remove the reason under Body form if this was chosen by mistake.'
-              : 'Remove the reason under Disqualify entry if this was chosen by mistake.'}
-          </Muted>
+          <Muted>Remove the reason under Body form if this was chosen by mistake.</Muted>
         </Card>
       ) : null}
 
