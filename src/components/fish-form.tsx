@@ -96,6 +96,7 @@ function ParentField({
 
 export function FishForm({
   initial,
+  defaults,
   allFish,
   tanks,
   initialTankId,
@@ -103,28 +104,32 @@ export function FishForm({
   onSubmit,
 }: {
   initial?: Fish;
+  defaults?: Partial<FishInput>;
   allFish: Fish[];
   tanks: Tank[];
   initialTankId?: string;
   submitLabel: string;
   onSubmit: (input: FishInput, photo: PickedPhoto | null) => Promise<void>;
 }) {
-  const [name, setName] = useState(initial?.name ?? '');
-  const [sex, setSex] = useState<Sex>(initial?.sex ?? 'U');
-  const [tail, setTail] = useState<TailStandard | null>(initial?.tail_standard ?? null);
-  const [baseColour, setBaseColour] = useState<number | null>(initial?.base_colour ?? null);
-  const [coverColours, setCoverColours] = useState<number[]>(initial?.cover_colours ?? []);
-  const [strain, setStrain] = useState(initial?.strain ?? '');
-  const [dob, setDob] = useState<string | null>(initial?.date_of_birth ?? null);
-  const [generation, setGeneration] = useState(initial?.generation ?? '');
-  const [origin, setOrigin] = useState<Origin>(initial?.origin ?? 'bred');
-  const [foundation, setFoundation] = useState(initial?.foundation ?? false);
-  const [originalBreeder, setOriginalBreeder] = useState(initial?.original_breeder ?? '');
-  const [sireId, setSireId] = useState<string | null>(initial?.sire_id ?? null);
-  const [damId, setDamId] = useState<string | null>(initial?.dam_id ?? null);
-  const [tankId, setTankId] = useState<string | null>(initial?.tank_id ?? initialTankId ?? null);
-  const [status, setStatus] = useState<FishStatus>(initial?.status ?? 'breeder');
-  const [notes, setNotes] = useState(initial?.notes ?? '');
+  // A new fish can start from suggested values, e.g. a fry picked from a spawn.
+  const seed: Partial<FishInput> = initial ?? defaults ?? {};
+  const [name, setName] = useState(seed.name ?? '');
+  const [sex, setSex] = useState<Sex>(seed.sex ?? 'U');
+  const [tail, setTail] = useState<TailStandard | null>(seed.tail_standard ?? null);
+  const [baseColour, setBaseColour] = useState<number | null>(seed.base_colour ?? null);
+  const [coverColours, setCoverColours] = useState<number[]>(seed.cover_colours ?? []);
+  const [strain, setStrain] = useState(seed.strain ?? '');
+  const [dob, setDob] = useState<string | null>(seed.date_of_birth ?? null);
+  const [generation, setGeneration] = useState(seed.generation ?? '');
+  const [origin, setOrigin] = useState<Origin>(seed.origin ?? 'bred');
+  const [foundation, setFoundation] = useState(seed.foundation ?? false);
+  const [originalBreeder, setOriginalBreeder] = useState(seed.original_breeder ?? '');
+  const [sireId, setSireId] = useState<string | null>(seed.sire_id ?? null);
+  const [damId, setDamId] = useState<string | null>(seed.dam_id ?? null);
+  const [tankId, setTankId] = useState<string | null>(seed.tank_id ?? initialTankId ?? null);
+  const [status, setStatus] = useState<FishStatus>(seed.status ?? 'breeder');
+  const [notes, setNotes] = useState(seed.notes ?? '');
+  const [pickReason, setPickReason] = useState(seed.pick_reason ?? '');
   const [photo, setPhoto] = useState<PickedPhoto | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -164,6 +169,8 @@ export function FishForm({
           tank_id: tankId,
           status,
           notes: blankToNull(notes),
+          spawn_id: seed.spawn_id ?? null,
+          pick_reason: seed.spawn_id ? blankToNull(pickReason) : null,
         },
         photo,
       );
@@ -189,6 +196,15 @@ export function FishForm({
         </Card>
       ) : null}
 
+      {seed.spawn_id ? (
+        <Field
+          label="Why it was picked"
+          value={pickReason}
+          onChangeText={setPickReason}
+          multiline
+          placeholder="e.g. best dorsal in the batch, strong colour"
+        />
+      ) : null}
       <ChipSelect label="Sex" options={SEXES} value={sex} onChange={(v) => v && setSex(v)} />
       <ChipSelect label="Tail standard (IKGH)" options={TAIL_STANDARDS} value={tail} onChange={setTail} />
       {sexChanges ? (

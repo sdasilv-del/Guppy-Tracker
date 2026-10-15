@@ -1,4 +1,4 @@
-import type { FishStatus, Origin, Sex, TailStandard, TankPurpose } from '@/lib/constants';
+import type { FishStatus, Origin, Sex, SpawnEventKind, TailStandard, TankPurpose } from '@/lib/constants';
 
 export type Profile = {
   id: string;
@@ -60,6 +60,8 @@ export type Fish = {
   tank_id: string | null;
   status: FishStatus;
   notes: string | null;
+  spawn_id: string | null;
+  pick_reason: string | null;
   created_at: string;
 };
 
@@ -77,4 +79,53 @@ export type FishMove = {
   from_tank_id: string | null;
   to_tank_id: string | null;
   moved_at: string;
+};
+
+export type Trait = {
+  id: string;
+  name: string;
+};
+
+export type BreedingGroup = {
+  id: string;
+  group_code: string;
+  name: string | null;
+  tank_id: string | null;
+  started_on: string;
+  ended_on: string | null;
+  goal: string | null;
+  notes: string | null;
+  created_at: string;
+};
+
+export type Spawn = {
+  id: string;
+  spawn_code: string;
+  group_id: string | null;
+  sire_id: string | null;
+  dam_id: string | null;
+  born_on: string;
+  fry_count: number;
+  tank_id: string | null;
+  strain: string | null;
+  generation: string | null;
+  notes: string | null;
+  created_at: string;
+};
+
+export type SpawnEvent = {
+  id: string;
+  spawn_id: string;
+  kind: SpawnEventKind;
+  happened_on: string;
+  count: number | null;
+  to_tank_id: string | null;
+  males: number | null;
+  females: number | null;
+  unknown: number | null;
+  reason: string | null;
+  for_sale: boolean;
+  sold_on: string | null;
+  notes: string | null;
+  created_at: string;
 };

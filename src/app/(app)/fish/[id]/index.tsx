@@ -32,9 +32,12 @@ import { useAuth } from '@/lib/auth';
 import {
   addFishPhoto,
   deleteFishPhoto,
+  groupIdsForFish,
   listFish,
+  listGroups,
   listFishMoves,
   listFishPhotos,
+  listSpawns,
   listTanks,
   signedPhotoUrls,
   updateFish,
@@ -49,11 +52,14 @@ export default function FishScreen() {
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const { data, error, reload } = useFocusData(async () => {
-    const [allFish, tanks, photos, moves] = await Promise.all([
+    const [allFish, tanks, photos, moves, spawns, groups, groupIds] = await Promise.all([
       listFish(),
       listTanks(),
       listFishPhotos(id),
       listFishMoves(id),
+      listSpawns(),
+      listGroups(),
+      groupIdsForFish(id),
     ]);
     const urls = await signedPhotoUrls(photos.map((p) => p.storage_path));
     return {
@@ -63,6 +69,8 @@ export default function FishScreen() {
       photos,
       urls,
       moves,
+      spawns,
+      groups: groups.filter((g) => groupIds.includes(g.id)),
     };
   });
 
@@ -80,6 +88,9 @@ export default function FishScreen() {
   const sire = fish.sire_id ? byId[fish.sire_id] : null;
   const dam = fish.dam_id ? byId[fish.dam_id] : null;
   const offspring = data.allFish.filter((f) => f.sire_id === id || f.dam_id === id);
+  const fromSpawn = fish.spawn_id ? data.spawns.find((s) => s.id === fish.spawn_id) : null;
+  const parentOf = data.spawns.filter((s) => s.sire_id === id || s.dam_id === id);
+  const openSpawn = (sid: string) => router.push({ pathname: '/spawns/[id]', params: { id: sid } });
   const openFish = (fid: string) => router.push({ pathname: '/fish/[id]', params: { id: fid } });
 
   async function run(action: () => Promise<void>) {
@@ -154,6 +165,17 @@ export default function FishScreen() {
         <InfoRow label="Tank" value={fish.tank_id ? data.tankNames[fish.tank_id] : 'None'} />
         <InfoRow label="Status" value={labelOf(FISH_STATUSES, fish.status)} />
         <InfoRow label="Earlier IDs" value={fish.previous_codes.join(', ')} />
+        {fromSpawn ? (
+          <InfoRow
+            label="Picked from"
+            value={
+              <Body style={styles.link} onPress={() => openSpawn(fromSpawn.id)}>
+                {fromSpawn.spawn_code}
+              </Body>
+            }
+          />
+        ) : null}
+        <InfoRow label="Why picked" value={fish.pick_reason} />
         {fish.notes ? <Body>{fish.notes}</Body> : null}
       </Card>
 
@@ -192,6 +214,32 @@ export default function FishScreen() {
         )}
       </Section>
 
+      {data.groups.length > 0 ? (
+        <Section title="Breeding groups">
+          {data.groups.map((g) => (
+            <ListRow
+              key={g.id}
+              title={g.name ? `${g.group_code} · ${g.name}` : g.group_code}
+              subtitle={[g.goal, g.ended_on ? `Ended ${formatDate(g.ended_on)}` : 'Active'].filter(Boolean).join(' · ')}
+              onPress={() => router.push({ pathname: '/groups/[id]', params: { id: g.id } })}
+            />
+          ))}
+        </Section>
+      ) : null}
+
+      {parentOf.length > 0 ? (
+        <Section title={`Spawns as a parent (${parentOf.length})`}>
+          {parentOf.map((s) => (
+            <ListRow
+              key={s.id}
+              title={`${s.spawn_code} · born ${formatDate(s.born_on)}`}
+              subtitle={`${s.fry_count} fry at birth`}
+              onPress={() => openSpawn(s.id)}
+            />
+          ))}
+        </Section>
+      ) : null}
+
       <Section title={`Offspring (${offspring.length})`}>
         {offspring.length === 0 ? <Empty>No recorded offspring yet.</Empty> : null}
         {offspring.map((f) => (
@@ -225,4 +273,5 @@ const styles = StyleSheet.create({
   photo: { width: 260, height: 195, borderRadius: 12 },
   buttons: { flexDirection: 'row', gap: Spacing.two },
   half: { flex: 1 },
+  link: { textDecorationLine: 'underline', fontWeight: '500' },
 });

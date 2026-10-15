@@ -14,8 +14,12 @@ Each breeder signs up with their own account. Every table uses row level securit
 - Fish IDs built automatically as initials + tail standard + sex + number, e.g. `SD-A3-M-001`
 - Moving fish between tanks, one at a time or several at once, with a tank history per fish
 - Moving a fish into a cull tank marks it Culled; marking a for-sale fish sold marks it Sold
+- Breeding groups (pair, trio or larger) with a goal, target traits, tank and start and end dates, with a warning when fish in a group are closely related
+- Spawns from a group with sire, dam (or Unknown), date of birth, fry count, tank, strain and generation, suggested from the parents
+- A batch log for each spawn: moves (whole batch or part), losses with a cause, sexing counts, and culls with reasons that can be marked for sale and sold
+- The current fry count is worked out from the log, and picking a fry makes it a fish with its parents, birth date and the reason it was picked
 
-Breeding groups, spawns, pedigree view, traits and IHS scoring come next.
+Pedigree view, trait records and IHS scoring come next.
 
 ## Setup
 

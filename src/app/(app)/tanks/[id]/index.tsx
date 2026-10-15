@@ -4,7 +4,17 @@ import { StyleSheet, View } from 'react-native';
 import { Button, Card, Empty, ErrorText, InfoRow, ListRow, Loading, Muted, Screen, Section } from '@/components/ui';
 import { Spacing } from '@/constants/theme';
 import { FISH_STATUSES, INACTIVE_STATUSES, labelOf, TANK_PURPOSES } from '@/lib/constants';
-import { getTank, listFishInTank, listWaterChanges, listWaterTests } from '@/lib/db';
+import {
+  getTank,
+  listFish,
+  listFishInTank,
+  listSpawnEvents,
+  listSpawns,
+  listWaterChanges,
+  listWaterTests,
+  spawnMovesIntoTank,
+} from '@/lib/db';
+import { summarizeBatch } from '@/lib/spawn';
 import { formatDate } from '@/lib/format';
 import type { WaterTest } from '@/lib/types';
 import { useFocusData } from '@/lib/use-data';
@@ -25,13 +35,20 @@ function readingSummary(t: WaterTest): string {
 export default function TankScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { data, error } = useFocusData(async () => {
-    const [tank, fish, tests, changes] = await Promise.all([
+    const [tank, fish, tests, changes, allSpawns, movesIn, allFish] = await Promise.all([
       getTank(id),
       listFishInTank(id),
       listWaterTests(id),
       listWaterChanges(id),
+      listSpawns(),
+      spawnMovesIntoTank(id),
+      listFish(),
     ]);
-    return { tank, fish, tests, changes };
+    // Spawns kept in this tank, and spawns that had part of their batch moved here.
+    const spawns = allSpawns.filter((s) => s.tank_id === id);
+    const partSpawns = allSpawns.filter((s) => s.tank_id !== id && movesIn.some((m) => m.spawn_id === s.id));
+    const events = await listSpawnEvents([...spawns, ...partSpawns].map((s) => s.id));
+    return { tank, fish, tests, changes, spawns, partSpawns, movesIn, events, allFish };
   });
 
   if (!data && !error) return <Loading />;
@@ -82,6 +99,33 @@ export default function TankScreen() {
           />
         ))}
       </Section>
+
+      {data.spawns.length + data.partSpawns.length > 0 ? (
+        <Section title="Fry batches">
+          {data.spawns.map((s) => {
+            const batch = summarizeBatch(s, data.events, data.allFish);
+            return (
+              <ListRow
+                key={s.id}
+                title={`${s.spawn_code} · born ${formatDate(s.born_on)}`}
+                subtitle={`${batch.remaining} of ${s.fry_count} fry`}
+                onPress={() => router.push({ pathname: '/spawns/[id]', params: { id: s.id } })}
+              />
+            );
+          })}
+          {data.partSpawns.map((s) => {
+            const moved = data.movesIn.filter((m) => m.spawn_id === s.id).reduce((n, m) => n + (m.count ?? 0), 0);
+            return (
+              <ListRow
+                key={s.id}
+                title={`${s.spawn_code} · born ${formatDate(s.born_on)}`}
+                subtitle={`${moved} fry moved here from the batch`}
+                onPress={() => router.push({ pathname: '/spawns/[id]', params: { id: s.id } })}
+              />
+            );
+          })}
+        </Section>
+      ) : null}
 
       <Section
         title="Water tests"

@@ -99,6 +99,15 @@ export type FishStatus = (typeof FISH_STATUSES)[number]['value'];
 // Statuses for fish that are no longer in the fish room.
 export const INACTIVE_STATUSES: FishStatus[] = ['sold', 'culled', 'deceased'];
 
+export const SPAWN_EVENT_KINDS = [
+  { value: 'move', label: 'Move' },
+  { value: 'loss', label: 'Loss' },
+  { value: 'sexing', label: 'Sexing' },
+  { value: 'cull', label: 'Cull' },
+] as const;
+
+export type SpawnEventKind = (typeof SPAWN_EVENT_KINDS)[number]['value'];
+
 export function labelOf<T extends string | number>(
   list: readonly { value: T; label: string }[],
   value: T | null | undefined,
