@@ -19,24 +19,23 @@ Breeding groups, spawns, pedigree view, traits and IHS scoring come next.
 
 ## Setup
 
-### 1. Create the database (free)
+### 1. Database
 
-1. Create a project at [supabase.com](https://supabase.com).
-2. In the project, open **SQL Editor**, paste the contents of [`supabase/migrations/0001_tanks_and_fish.sql`](supabase/migrations/0001_tanks_and_fish.sql) and click **Run**.
-3. Open **Project Settings > API** and copy the **Project URL** and the **anon public** key.
+The app is already connected to the Guppy Tracker Supabase project (Canada Central). Its tables, privacy rules and photo storage come from the files in [`supabase/migrations`](supabase/migrations), applied in order.
+
+To use a different Supabase project instead, run those files in its SQL Editor, copy `.env.example` to `.env`, and fill in that project's URL and publishable key from **Project Settings > API**.
 
 ### 2. Run the app on your phone
 
 1. Install [Node.js](https://nodejs.org) (version 20 or newer) on your computer.
-2. Copy `.env.example` to `.env` and paste in the URL and key from step 1.
-3. In this folder run:
+2. In this folder run:
 
    ```bash
    npm install
    npx expo start
    ```
 
-4. Install **Expo Go** from the App Store or Google Play, then scan the QR code shown in the terminal.
+3. Install **Expo Go** from the App Store or Google Play, then scan the QR code shown in the terminal.
 
 ## Development
 

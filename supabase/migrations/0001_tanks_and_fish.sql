@@ -1,8 +1,6 @@
 -- Guppy Tracker: accounts, tanks, water log and fish.
 -- Every table carries user_id and row level security, so each account only sees its own rows.
 
-create extension if not exists pgcrypto;
-
 -- Profiles ---------------------------------------------------------------
 
 create table public.profiles (
@@ -139,7 +137,7 @@ end $$;
 -- Tank codes: T-001, T-002 ... per account ---------------------------------
 
 create function public.assign_tank_code() returns trigger
-language plpgsql as $$
+language plpgsql set search_path = '' as $$
 begin
   select coalesce(max(seq), 0) + 1 into new.seq from public.tanks where user_id = new.user_id;
   new.tank_code := 'T-' || lpad(new.seq::text, 3, '0');
@@ -154,7 +152,7 @@ create trigger tanks_code before insert on public.tanks
 -- the fish takes the next number for its new group and keeps its old code in previous_codes.
 
 create function public.assign_fish_code() returns trigger
-language plpgsql as $$
+language plpgsql set search_path = '' as $$
 declare initials text;
 begin
   if tg_op = 'UPDATE' and new.sex = old.sex and new.tail_standard = old.tail_standard then
@@ -185,7 +183,7 @@ create trigger fish_code before insert or update of sex, tail_standard on public
 -- Moving a fish: log the move, and moving into a cull tank marks it Culled.
 
 create function public.on_fish_tank_change() returns trigger
-language plpgsql as $$
+language plpgsql set search_path = '' as $$
 begin
   if new.tank_id is not null
      and exists (select 1 from public.tanks where id = new.tank_id and purpose = 'cull') then
@@ -198,7 +196,7 @@ create trigger fish_cull_status before insert or update of tank_id on public.fis
   for each row execute function public.on_fish_tank_change();
 
 create function public.log_fish_move() returns trigger
-language plpgsql as $$
+language plpgsql set search_path = '' as $$
 begin
   if tg_op = 'INSERT' then
     if new.tank_id is not null then
@@ -218,7 +216,7 @@ create trigger fish_moves_log after insert or update of tank_id on public.fish
 -- updated_at ---------------------------------------------------------------
 
 create function public.touch_updated_at() returns trigger
-language plpgsql as $$
+language plpgsql set search_path = '' as $$
 begin
   new.updated_at := now();
   return new;

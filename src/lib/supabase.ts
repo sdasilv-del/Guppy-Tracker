@@ -4,12 +4,14 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createClient } from '@supabase/supabase-js';
 import { AppState, Platform } from 'react-native';
 
-const url = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
-const anonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? '';
+// The Guppy Tracker project. The publishable key is safe to ship in the app:
+// row level security decides what each signed-in account can read and write.
+// Set EXPO_PUBLIC_SUPABASE_URL / EXPO_PUBLIC_SUPABASE_ANON_KEY in .env to point at another project.
+const url = process.env.EXPO_PUBLIC_SUPABASE_URL || 'https://mhikrakszlfmwicgeoba.supabase.co';
+const anonKey =
+  process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || 'sb_publishable_jrO8ZUnEN4SObJikuiMm4A_Xgpizxml';
 
-export const isConfigured = url.length > 0 && anonKey.length > 0;
-
-export const supabase = createClient(url || 'http://localhost', anonKey || 'missing-key', {
+export const supabase = createClient(url, anonKey, {
   auth: {
     storage: AsyncStorage,
     autoRefreshToken: true,
