@@ -179,10 +179,9 @@ export function disqualifications(reasons: Record<string, string[]>): Reason[] {
   );
 }
 
-// Whether a saved evaluation is disqualified: a male disqualifying reason, or any female "Disqualify entry" reason.
+// Whether a saved evaluation is disqualified. Only the male sheet has disqualifying reasons.
 export function isDisqualified(sex: 'M' | 'F', reasons: Record<string, string[]>): boolean {
-  if (sex === 'F') return (reasons.disqualify ?? []).length > 0;
-  return disqualifications(reasons).length > 0;
+  return sex === 'M' && disqualifications(reasons).length > 0;
 }
 
 // IHS 2023 guidance that depends on the fish's tail standard, from the standard descriptions.

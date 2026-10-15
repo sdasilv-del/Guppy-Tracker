@@ -1,5 +1,5 @@
 // The female IHS 2023 score sheet (10 points): Size 3, Form 3, Matching 2, Vitality 2.
-// The evaluator picks each score from a fixed scale; reasons explain it and never change it.
+// The evaluator types each score; the scale is a guide, and reasons explain the score without changing it.
 // Reason ids are saved with the evaluation, so never rename one.
 
 import type { CategoryReasons } from '@/lib/ihs-reasons';
@@ -130,25 +130,7 @@ export const FEMALE_SHEET: FemaleCategory[] = [
   },
 ];
 
-// Saved under score_reasons.disqualify; the explanation for "Other" goes in score_notes.disqualify.
-export const DISQUALIFY_KEY = 'disqualify';
-export const DISQUALIFY_OTHER = 'dq_other';
-
-export const FEMALE_DISQUALIFY: CategoryReasons = {
-  reasons: [
-    { id: 'dq_not_pair', label: 'Pair is not evidently a true matching pair', disqualifies: true },
-    { id: 'dq_base_colours', label: 'Incompatible base colours', disqualifies: true },
-    { id: 'dq_strain_colours', label: 'Incompatible strain colours or patterns, such as a blue/red grass mix', disqualifies: true },
-    { id: 'dq_markings', label: 'Missing expected strain markings, such as half-black markings', disqualifies: true },
-    { id: 'dq_body_form', label: 'Body form demonstrates that the fish are not a true pair', disqualifies: true },
-    { id: 'dq_sick', label: 'Sick fish', disqualifies: true },
-    { id: 'dq_disfigured', label: 'Disfigured fish', disqualifies: true },
-    { id: DISQUALIFY_OTHER, label: 'Other — explanation required', disqualifies: true },
-  ],
-};
-
 export function femaleReasonOptions(key: string): CategoryReasons | undefined {
-  if (key === DISQUALIFY_KEY) return FEMALE_DISQUALIFY;
   return FEMALE_SHEET.find((c) => c.key === key)?.reasons;
 }
 

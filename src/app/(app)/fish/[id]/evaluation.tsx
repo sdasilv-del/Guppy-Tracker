@@ -33,7 +33,7 @@ import {
   TAIL_STANDARDS,
 } from '@/lib/constants';
 import { useAuth } from '@/lib/auth';
-import { DISQUALIFY_KEY, DISQUALIFY_OTHER, FEMALE_DISQUALIFY, femaleReasonOptions } from '@/lib/ihs-female';
+import { femaleReasonOptions } from '@/lib/ihs-female';
 import { categoryGuide, type CategoryReasons, disqualifications, MALE_REASONS, reasonById } from '@/lib/ihs-reasons';
 import {
   deleteEvaluation,
@@ -179,11 +179,9 @@ export default function EvaluationScreen() {
     Math.round(list.reduce((sum, c) => sum + (parseNumber(scores[c.key] ?? '') ?? 0), 0) * 10) / 10;
   const total = pointsFor(categories);
   const reasonOptions = (key: string) => (sex === 'M' ? MALE_REASONS[key] : undefined);
-  const dq =
-    sex === 'M'
-      ? disqualifications(scoreReasons)
-      : FEMALE_DISQUALIFY.reasons.filter((r) => (scoreReasons[DISQUALIFY_KEY] ?? []).includes(r.id));
-  const dqText = dq.map((r) => r.label.replace('Disqualified: ', '').replace(' — explanation required', '')).join(', ');
+  // Only the male sheet can disqualify.
+  const dq = sex === 'M' ? disqualifications(scoreReasons) : [];
+  const dqText = dq.map((r) => r.label.replace('Disqualified: ', '')).join(', ');
   const female = sex === 'F' ? femaleTotals(scores) : null;
   const femaleState: FemaleSheetState = {
     scores,
@@ -216,7 +214,7 @@ export default function EvaluationScreen() {
       parsed[c.key] = n;
     }
     // Only reasons that belong to this sheet are saved, so male and female lists never mix.
-    const reasonKeys = sex === 'F' ? [...categories.map((c) => c.key), DISQUALIFY_KEY] : categories.map((c) => c.key);
+    const reasonKeys = categories.map((c) => c.key);
     const isReason = (key: string, rid: string) =>
       sex === 'M' ? !!reasonById(key, rid) : !!femaleReasonOptions(key)?.reasons.some((r) => r.id === rid);
     const reasonsByKey = Object.fromEntries(
@@ -227,10 +225,6 @@ export default function EvaluationScreen() {
     const notesByKey = Object.fromEntries(
       reasonKeys.map((key) => [key, scoreNotes[key]?.trim() ?? '']).filter(([, v]) => v !== ''),
     );
-    if (sex === 'F' && (reasonsByKey[DISQUALIFY_KEY] ?? []).includes(DISQUALIFY_OTHER) && !notesByKey[DISQUALIFY_KEY]) {
-      setError('Explain the "Other" disqualification reason.');
-      return;
-    }
     setBusy(true);
     setError(null);
     try {

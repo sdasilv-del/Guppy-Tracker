@@ -1,10 +1,10 @@
 import { StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { ReasonSelect } from '@/components/reason-select';
-import { Card, Heading, Muted } from '@/components/ui';
+import { Card, Heading } from '@/components/ui';
 import { Spacing } from '@/constants/theme';
 import { parseNumber } from '@/lib/format';
-import { DISQUALIFY_KEY, DISQUALIFY_OTHER, FEMALE_DISQUALIFY, FEMALE_SHEET, type FemaleCategory } from '@/lib/ihs-female';
+import { FEMALE_SHEET, type FemaleCategory } from '@/lib/ihs-female';
 import { useTheme } from '@/hooks/use-theme';
 
 export type FemaleSheetState = {
@@ -92,37 +92,12 @@ export function FemaleScoreSheet({
   state: FemaleSheetState;
   onChange: (next: Partial<FemaleSheetState>) => void;
 }) {
-  const theme = useTheme();
-  const dq = state.reasons[DISQUALIFY_KEY] ?? [];
-
   return (
     <>
       {FEMALE_SHEET.map((category) => (
         <Criterion key={category.key} category={category} state={state} onChange={onChange} />
       ))}
 
-      <Card style={dq.length > 0 ? { borderWidth: 1, borderColor: theme.danger } : undefined}>
-        <Heading>Disqualify entry</Heading>
-        <Muted>Applies to the pair. Ordinary form or matching reasons never disqualify on their own.</Muted>
-        <ReasonSelect
-          title="Disqualify entry"
-          placeholder="Choose a disqualification reason"
-          options={FEMALE_DISQUALIFY}
-          selected={dq}
-          onChange={(next) => onChange({ reasons: { ...state.reasons, [DISQUALIFY_KEY]: next } })}
-        />
-        {dq.includes(DISQUALIFY_OTHER) ? (
-          <TextInput
-            value={state.notes[DISQUALIFY_KEY] ?? ''}
-            onChangeText={(text) => onChange({ notes: { ...state.notes, [DISQUALIFY_KEY]: text } })}
-            placeholder="Explain the disqualification (required)"
-            placeholderTextColor={theme.textSecondary}
-            multiline
-            style={[styles.comment, { color: theme.text, borderColor: theme.danger }]}
-            accessibilityLabel="Disqualification explanation"
-          />
-        ) : null}
-      </Card>
     </>
   );
 }
