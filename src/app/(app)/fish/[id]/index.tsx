@@ -31,6 +31,7 @@ import {
   TAIL_STANDARDS,
 } from '@/lib/constants';
 import { useAuth } from '@/lib/auth';
+import { disqualifications } from '@/lib/ihs-reasons';
 import {
   addFishPhoto,
   deleteFishPhoto,
@@ -247,7 +248,15 @@ export default function FishScreen() {
           <ListRow
             key={e.id}
             title={`${e.total} / ${ihsMaxTotal(e.sex)} · ${formatDate(e.evaluated_on)}`}
-            subtitle={[labelOf(EVALUATION_KINDS, e.kind), e.event, e.placement, e.judge].filter(Boolean).join(' · ')}
+            subtitle={[
+              disqualifications(e.score_reasons ?? {}).length > 0 ? 'Disqualified' : null,
+              labelOf(EVALUATION_KINDS, e.kind),
+              e.event,
+              e.placement,
+              e.judge,
+            ]
+              .filter(Boolean)
+              .join(' · ')}
             onPress={() => router.push({ pathname: '/fish/[id]/evaluation', params: { id, evalId: e.id } })}
           />
         ))}

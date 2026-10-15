@@ -154,6 +154,7 @@ export type Evaluation = {
   cover_colours: number[];
   scores: Record<string, number>;
   score_notes: Record<string, string>;
+  score_reasons: Record<string, string[]>;
   total: number;
   placement: string | null;
   photo_path: string | null;

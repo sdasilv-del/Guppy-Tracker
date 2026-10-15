@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { Alert, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { pickPhoto, type PickedPhoto } from '@/components/fish-form';
+import { ReasonSelect } from '@/components/reason-select';
 import {
   Body,
   Button,
@@ -31,6 +32,7 @@ import {
   TAIL_STANDARDS,
 } from '@/lib/constants';
 import { useAuth } from '@/lib/auth';
+import { categoryGuide, type CategoryReasons, disqualifications, MALE_REASONS, reasonById } from '@/lib/ihs-reasons';
 import {
   deleteEvaluation,
   getEvaluation,
@@ -50,12 +52,20 @@ function ScoreRow({
   note,
   onValue,
   onNote,
+  reasonOptions,
+  reasons,
+  onReasons,
+  guide,
 }: {
   category: IhsCategory;
   value: string;
   note: string;
   onValue: (text: string) => void;
   onNote: (text: string) => void;
+  reasonOptions?: CategoryReasons;
+  reasons: string[];
+  onReasons: (next: string[]) => void;
+  guide: string[];
 }) {
   const theme = useTheme();
   const n = parseNumber(value);
@@ -76,10 +86,24 @@ function ScoreRow({
         />
         <Text style={[styles.max, { color: theme.textSecondary }]}>/ {category.max}</Text>
       </View>
+      {guide.map((line) => (
+        <Text key={line} style={[styles.guide, { color: theme.textSecondary }]}>
+          {line}
+        </Text>
+      ))}
+      {reasonOptions ? (
+        <ReasonSelect
+          categoryKey={category.key}
+          title={`${category.part}: ${category.label}`}
+          options={reasonOptions}
+          selected={reasons}
+          onChange={onReasons}
+        />
+      ) : null}
       <TextInput
         value={note}
         onChangeText={onNote}
-        placeholder="Note, e.g. why points were lost"
+        placeholder={reasonOptions ? 'Other / additional comment (optional)' : 'Note, e.g. why points were lost'}
         placeholderTextColor={theme.textSecondary}
         style={[inputStyle, styles.noteInput]}
         accessibilityLabel={`${category.part} ${category.label} note`}
@@ -91,6 +115,7 @@ function ScoreRow({
 export default function EvaluationScreen() {
   const { id, evalId } = useLocalSearchParams<{ id: string; evalId?: string }>();
   const { session } = useAuth();
+  const theme = useTheme();
   const [loading, setLoading] = useState(true);
   const [fish, setFish] = useState<Fish | null>(null);
   const [existing, setExisting] = useState<Evaluation | null>(null);
@@ -101,6 +126,7 @@ export default function EvaluationScreen() {
   const [placement, setPlacement] = useState('');
   const [scores, setScores] = useState<Record<string, string>>({});
   const [scoreNotes, setScoreNotes] = useState<Record<string, string>>({});
+  const [scoreReasons, setScoreReasons] = useState<Record<string, string[]>>({});
   const [notes, setNotes] = useState('');
   const [photo, setPhoto] = useState<PickedPhoto | null>(null);
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
@@ -120,6 +146,7 @@ export default function EvaluationScreen() {
           setPlacement(e.placement ?? '');
           setScores(Object.fromEntries(Object.entries(e.scores).map(([k, v]) => [k, numberText(v)])));
           setScoreNotes(e.score_notes);
+          setScoreReasons(e.score_reasons ?? {});
           setNotes(e.notes ?? '');
           if (e.photo_path) setPhotoUrl((await signedPhotoUrls([e.photo_path]))[e.photo_path] ?? null);
         }
@@ -147,7 +174,19 @@ export default function EvaluationScreen() {
   const klass = existing ?? fish;
   const categories = ihsCategories(sex);
   const parts = [...new Set(categories.map((c) => c.part))];
-  const total = categories.reduce((sum, c) => sum + (parseNumber(scores[c.key] ?? '') ?? 0), 0);
+  const pointsFor = (list: IhsCategory[]) =>
+    Math.round(list.reduce((sum, c) => sum + (parseNumber(scores[c.key] ?? '') ?? 0), 0) * 10) / 10;
+  const total = pointsFor(categories);
+  // Reason lists are on the male sheet only.
+  const reasonOptions = (key: string) => (sex === 'M' ? MALE_REASONS[key] : undefined);
+  const dq = sex === 'M' ? disqualifications(scoreReasons) : [];
+
+  function setReasons(key: string, next: string[]) {
+    setScoreReasons({ ...scoreReasons, [key]: next });
+    // Vitality's behaviour sets its score; every other reason only explains the score.
+    const points = next.length === 1 ? reasonById(key, next[0])?.points : undefined;
+    if (points !== undefined) setScores({ ...scores, [key]: String(points) });
+  }
 
   async function save() {
     const parsed: Record<string, number> = {};
@@ -161,6 +200,11 @@ export default function EvaluationScreen() {
       }
       parsed[c.key] = n;
     }
+    const reasonsByKey = Object.fromEntries(
+      categories
+        .map((c) => [c.key, (scoreReasons[c.key] ?? []).filter((id) => reasonById(c.key, id))] as const)
+        .filter(([, ids]) => sex === 'M' && ids.length > 0),
+    );
     const notesByKey = Object.fromEntries(
       categories.map((c) => [c.key, scoreNotes[c.key]?.trim() ?? '']).filter(([, v]) => v !== ''),
     );
@@ -181,6 +225,7 @@ export default function EvaluationScreen() {
         cover_colours: klass.cover_colours,
         scores: parsed,
         score_notes: notesByKey,
+        score_reasons: reasonsByKey,
         placement: kind === 'official' ? blankToNull(placement) : null,
         photo_path: photoPath,
         notes: blankToNull(notes),
@@ -225,6 +270,15 @@ export default function EvaluationScreen() {
         <InfoRow label="Cover colour" value={klass.cover_colours.map((c) => labelOf(COVER_COLOURS, c)).join(', ')} />
       </Card>
 
+      {dq.length > 0 ? (
+        <Card style={{ borderWidth: 1, borderColor: theme.danger }}>
+          <Body style={[styles.dq, { color: theme.danger }]}>
+            Disqualified: {dq.map((r) => r.label.replace('Disqualified: ', '')).join(', ')}
+          </Body>
+          <Muted>Remove the reason under Body form if this was chosen by mistake.</Muted>
+        </Card>
+      ) : null}
+
       <ChipSelect label="Kind" options={EVALUATION_KINDS} value={kind} onChange={(v) => v && setKind(v)} />
       <DateField label="Date" value={date} onChange={setDate} />
       {kind === 'official' ? <Field label="Show or event" value={event} onChangeText={setEvent} /> : null}
@@ -237,7 +291,15 @@ export default function EvaluationScreen() {
 
       {parts.map((part) => (
         <Card key={part}>
-          <Heading>{part}</Heading>
+          <View style={styles.partHeader}>
+            <Heading>{part}</Heading>
+            {sex === 'M' ? (
+              <Muted>
+                {pointsFor(categories.filter((c) => c.part === part))} /{' '}
+                {categories.filter((c) => c.part === part).reduce((sum, c) => sum + c.max, 0)}
+              </Muted>
+            ) : null}
+          </View>
           {categories
             .filter((c) => c.part === part)
             .map((c) => (
@@ -248,6 +310,14 @@ export default function EvaluationScreen() {
                 note={scoreNotes[c.key] ?? ''}
                 onValue={(text) => setScores({ ...scores, [c.key]: text })}
                 onNote={(text) => setScoreNotes({ ...scoreNotes, [c.key]: text })}
+                reasonOptions={reasonOptions(c.key)}
+                reasons={scoreReasons[c.key] ?? []}
+                onReasons={(next) => setReasons(c.key, next)}
+                guide={
+                  sex === 'M'
+                    ? categoryGuide(c.key, klass.tail_standard as Fish['tail_standard'] | null, klass.base_colour)
+                    : []
+                }
               />
             ))}
         </Card>
@@ -255,9 +325,12 @@ export default function EvaluationScreen() {
 
       <Card style={styles.totalCard}>
         <Body style={styles.total}>
-          {Math.round(total * 10) / 10} / {ihsMaxTotal(sex)}
+          {total} / {ihsMaxTotal(sex)}
         </Body>
         <Muted>Total, added up from the scores above</Muted>
+        {dq.length > 0 ? (
+          <Body style={[styles.dq, { color: theme.danger }]}>Disqualified: {dq.map((r) => r.label.replace('Disqualified: ', '')).join(', ')}</Body>
+        ) : null}
       </Card>
 
       {kind === 'official' ? (
@@ -283,6 +356,9 @@ export default function EvaluationScreen() {
 
 const styles = StyleSheet.create({
   scoreRow: { gap: Spacing.one, paddingVertical: Spacing.one },
+  partHeader: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' },
+  guide: { fontSize: 12, lineHeight: 16 },
+  dq: { fontWeight: '700' },
   scoreLine: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
   scoreLabel: { flex: 1, fontSize: 16 },
   input: { borderWidth: 1, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6, fontSize: 15 },
