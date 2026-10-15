@@ -19,7 +19,9 @@ Each breeder signs up with their own account. Every table uses row level securit
 - A batch log for each spawn: moves (whole batch or part), losses with a cause, sexing counts, and culls with reasons that can be marked for sale and sold
 - The current fry count is worked out from the log, and picking a fry makes it a fish with its parents, birth date and the reason it was picked
 
-Pedigree view, trait records and IHS scoring come next.
+- A pedigree for each fish going back four generations, where tapping any ancestor opens it, and a note when an ancestor appears more than once
+- Trait records on fish (value, score, date and notes) for the traits you define, shown against each breeding group's target traits
+- IHS evaluations of three kinds (official show result, practice judge, breeder score) using the IHS 2023 points: 100 for males across body, dorsal and caudal length, form and colour plus vitality, and 10 for females. Each score can carry a note, the total is added up for you, and the fish's class is kept as it was on the day
 
 ## Setup
 

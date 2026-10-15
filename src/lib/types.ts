@@ -1,4 +1,4 @@
-import type { FishStatus, Origin, Sex, SpawnEventKind, TailStandard, TankPurpose } from '@/lib/constants';
+import type { EvaluationKind, FishStatus, Origin, Sex, SpawnEventKind, TailStandard, TankPurpose } from '@/lib/constants';
 
 export type Profile = {
   id: string;
@@ -126,6 +126,41 @@ export type SpawnEvent = {
   reason: string | null;
   for_sale: boolean;
   sold_on: string | null;
+  notes: string | null;
+  created_at: string;
+};
+
+export type FishTrait = {
+  id: string;
+  fish_id: string;
+  trait_id: string;
+  recorded_on: string;
+  value: string | null;
+  score: number | null;
+  notes: string | null;
+  created_at: string;
+};
+
+export type Evaluation = {
+  id: string;
+  fish_id: string;
+  kind: EvaluationKind;
+  evaluated_on: string;
+  event: string | null;
+  judge: string | null;
+  sex: 'M' | 'F';
+  tail_standard: string | null;
+  base_colour: number | null;
+  cover_colours: number[];
+  scores: Record<string, number>;
+  score_notes: Record<string, string>;
+  score_reasons: Record<string, string[]>;
+  total: number;
+  male_id: string | null;
+  female_length_mm: number | null;
+  male_length_mm: number | null;
+  placement: string | null;
+  photo_path: string | null;
   notes: string | null;
   created_at: string;
 };

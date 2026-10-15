@@ -22,23 +22,29 @@ import { Spacing } from '@/constants/theme';
 import {
   BASE_COLOURS,
   COVER_COLOURS,
+  EVALUATION_KINDS,
   FISH_STATUSES,
+  ihsMaxTotal,
   labelOf,
   ORIGINS,
   SEXES,
   TAIL_STANDARDS,
 } from '@/lib/constants';
 import { useAuth } from '@/lib/auth';
+import { isDisqualified } from '@/lib/ihs-reasons';
 import {
   addFishPhoto,
   deleteFishPhoto,
   groupIdsForFish,
+  listEvaluations,
   listFish,
+  listFishTraits,
   listGroups,
   listFishMoves,
   listFishPhotos,
   listSpawns,
   listTanks,
+  listTraits,
   signedPhotoUrls,
   updateFish,
 } from '@/lib/db';
@@ -52,7 +58,8 @@ export default function FishScreen() {
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const { data, error, reload } = useFocusData(async () => {
-    const [allFish, tanks, photos, moves, spawns, groups, groupIds] = await Promise.all([
+    const [allFish, tanks, photos, moves, spawns, groups, groupIds, traitRecords, evaluations, traits] =
+      await Promise.all([
       listFish(),
       listTanks(),
       listFishPhotos(id),
@@ -60,6 +67,9 @@ export default function FishScreen() {
       listSpawns(),
       listGroups(),
       groupIdsForFish(id),
+      listFishTraits(id),
+      listEvaluations(id),
+      listTraits(),
     ]);
     const urls = await signedPhotoUrls(photos.map((p) => p.storage_path));
     return {
@@ -71,6 +81,9 @@ export default function FishScreen() {
       moves,
       spawns,
       groups: groups.filter((g) => groupIds.includes(g.id)),
+      traitRecords,
+      evaluations,
+      traitNames: Object.fromEntries(traits.map((t) => [t.id, t.name])),
     };
   });
 
@@ -201,7 +214,63 @@ export default function FishScreen() {
         />
       ) : null}
 
-      <Section title="Parents">
+      <Section
+        title="Traits"
+        action={
+          <Button
+            title="Record trait"
+            small
+            onPress={() => router.push({ pathname: '/fish/[id]/trait', params: { id } })}
+          />
+        }>
+        {data.traitRecords.length === 0 ? <Empty>No traits recorded yet.</Empty> : null}
+        {data.traitRecords.map((t) => (
+          <ListRow
+            key={t.id}
+            title={`${data.traitNames[t.trait_id] ?? 'Trait'} · ${formatDate(t.recorded_on)}`}
+            subtitle={[t.value, t.score !== null ? `Score ${t.score}` : null, t.notes].filter(Boolean).join(' · ')}
+            onPress={() => router.push({ pathname: '/fish/[id]/trait', params: { id, recordId: t.id } })}
+          />
+        ))}
+      </Section>
+
+      <Section
+        title="IHS evaluations"
+        action={
+          <Button
+            title="Score"
+            small
+            onPress={() => router.push({ pathname: '/fish/[id]/evaluation', params: { id } })}
+          />
+        }>
+        {data.evaluations.length === 0 ? <Empty>No evaluations yet.</Empty> : null}
+        {data.evaluations.map((e) => (
+          <ListRow
+            key={e.id}
+            title={`${e.total} / ${ihsMaxTotal(e.sex)} · ${formatDate(e.evaluated_on)}`}
+            subtitle={[
+              isDisqualified(e.sex, e.score_reasons ?? {}) ? 'Disqualified' : null,
+              labelOf(EVALUATION_KINDS, e.kind),
+              e.event,
+              e.placement,
+              e.judge,
+            ]
+              .filter(Boolean)
+              .join(' · ')}
+            onPress={() => router.push({ pathname: '/fish/[id]/evaluation', params: { id, evalId: e.id } })}
+          />
+        ))}
+      </Section>
+
+      <Section
+        title="Parents"
+        action={
+          <Button
+            title="Pedigree"
+            small
+            onPress={() => router.push({ pathname: '/fish/[id]/pedigree', params: { id } })}
+          />
+        }>
         {sire ? (
           <ListRow title={`Sire · ${sire.fish_code}`} subtitle={fishLabel(sire)} onPress={() => openFish(sire.id)} />
         ) : (
