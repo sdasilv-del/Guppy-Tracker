@@ -152,8 +152,3 @@ export function femaleReasonOptions(key: string): CategoryReasons | undefined {
   return FEMALE_SHEET.find((c) => c.key === key)?.reasons;
 }
 
-// Female body length divided by male body length; 1.5 is ideal. Null until both are entered.
-export function sizeRatio(femaleMm: number | null, maleMm: number | null): number | null {
-  if (!femaleMm || !maleMm) return null;
-  return Math.round((femaleMm / maleMm) * 100) / 100;
-}

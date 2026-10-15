@@ -39,14 +39,12 @@ import {
   deleteEvaluation,
   getEvaluation,
   getFish,
-  listFish,
   removeStoredPhotos,
   saveEvaluation,
   signedPhotoUrls,
   uploadPhoto,
 } from '@/lib/db';
 import { blankToNull, numberText, parseNumber, todayISO } from '@/lib/format';
-import { INACTIVE_STATUSES } from '@/lib/constants';
 import type { Evaluation, Fish } from '@/lib/types';
 import { useTheme } from '@/hooks/use-theme';
 
@@ -130,10 +128,6 @@ export default function EvaluationScreen() {
   const [scores, setScores] = useState<Record<string, string>>({});
   const [scoreNotes, setScoreNotes] = useState<Record<string, string>>({});
   const [scoreReasons, setScoreReasons] = useState<Record<string, string[]>>({});
-  const [maleId, setMaleId] = useState<string | null>(null);
-  const [femaleMm, setFemaleMm] = useState('');
-  const [maleMm, setMaleMm] = useState('');
-  const [males, setMales] = useState<Fish[]>([]);
   const [notes, setNotes] = useState('');
   const [photo, setPhoto] = useState<PickedPhoto | null>(null);
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
@@ -141,11 +135,9 @@ export default function EvaluationScreen() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    Promise.all([getFish(id), evalId ? getEvaluation(evalId) : null, listFish()])
-      .then(async ([f, e, all]) => {
+    Promise.all([getFish(id), evalId ? getEvaluation(evalId) : null])
+      .then(async ([f, e]) => {
         setFish(f);
-        // Males that can be compared with a female: those still in the fish room, plus one already linked.
-        setMales(all.filter((m) => m.sex === 'M' && (!INACTIVE_STATUSES.includes(m.status) || m.id === e?.male_id)));
         if (e) {
           setExisting(e);
           setKind(e.kind);
@@ -156,9 +148,6 @@ export default function EvaluationScreen() {
           setScores(Object.fromEntries(Object.entries(e.scores).map(([k, v]) => [k, numberText(v)])));
           setScoreNotes(e.score_notes);
           setScoreReasons(e.score_reasons ?? {});
-          setMaleId(e.male_id);
-          setFemaleMm(numberText(e.female_length_mm));
-          setMaleMm(numberText(e.male_length_mm));
           setNotes(e.notes ?? '');
           if (e.photo_path) setPhotoUrl((await signedPhotoUrls([e.photo_path]))[e.photo_path] ?? null);
         }
@@ -200,17 +189,11 @@ export default function EvaluationScreen() {
     scores,
     reasons: scoreReasons,
     notes: scoreNotes,
-    maleId,
-    femaleMm,
-    maleMm,
   };
   function changeFemale(next: Partial<FemaleSheetState>) {
     if (next.scores) setScores(next.scores);
     if (next.reasons) setScoreReasons(next.reasons);
     if (next.notes) setScoreNotes(next.notes);
-    if (next.maleId !== undefined) setMaleId(next.maleId);
-    if (next.femaleMm !== undefined) setFemaleMm(next.femaleMm);
-    if (next.maleMm !== undefined) setMaleMm(next.maleMm);
   }
 
   function setReasons(key: string, next: string[]) {
@@ -248,12 +231,6 @@ export default function EvaluationScreen() {
       setError('Explain the "Other" disqualification reason.');
       return;
     }
-    const femaleLength = parseNumber(femaleMm);
-    const maleLength = parseNumber(maleMm);
-    if (sex === 'F' && [femaleLength, maleLength].some((n, i) => [femaleMm, maleMm][i].trim() !== '' && (n === null || n <= 0))) {
-      setError('Body lengths must be numbers in millimetres.');
-      return;
-    }
     setBusy(true);
     setError(null);
     try {
@@ -272,9 +249,6 @@ export default function EvaluationScreen() {
         scores: parsed,
         score_notes: notesByKey,
         score_reasons: reasonsByKey,
-        male_id: sex === 'F' ? maleId : null,
-        female_length_mm: sex === 'F' ? femaleLength : null,
-        male_length_mm: sex === 'F' ? maleLength : null,
         placement: kind === 'official' ? blankToNull(placement) : null,
         photo_path: photoPath,
         notes: blankToNull(notes),
@@ -341,7 +315,7 @@ export default function EvaluationScreen() {
         placeholder="Name"
       />
 
-      {sex === 'F' ? <FemaleScoreSheet state={femaleState} onChange={changeFemale} males={males} /> : null}
+      {sex === 'F' ? <FemaleScoreSheet state={femaleState} onChange={changeFemale} /> : null}
 
       {sex === 'M' && parts.map((part) => (
         <Card key={part}>

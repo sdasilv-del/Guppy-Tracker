@@ -450,7 +450,8 @@ export async function getEvaluation(id: string): Promise<Evaluation | null> {
 }
 
 // The total is added up by the database from the scores.
-export type EvaluationInput = Omit<Evaluation, 'id' | 'created_at' | 'total'>;
+// The male link and lengths are no longer edited, so a save leaves any old values as they were.
+export type EvaluationInput = Omit<Evaluation, 'id' | 'created_at' | 'total' | 'male_id' | 'female_length_mm' | 'male_length_mm'>;
 
 export async function saveEvaluation(id: string | null, input: EvaluationInput): Promise<void> {
   if (id) must(await supabase.from('evaluations').update(input).eq('id', id));
