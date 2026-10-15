@@ -108,6 +108,45 @@ export const SPAWN_EVENT_KINDS = [
 
 export type SpawnEventKind = (typeof SPAWN_EVENT_KINDS)[number]['value'];
 
+export const EVALUATION_KINDS = [
+  { value: 'official', label: 'Official show result' },
+  { value: 'practice', label: 'Practice judge' },
+  { value: 'breeder', label: 'Breeder score' },
+] as const;
+
+export type EvaluationKind = (typeof EVALUATION_KINDS)[number]['value'];
+
+// IHS 2023 point assignment (item 14). Keys match public.ihs_max_points in the database.
+export type IhsCategory = { key: string; part: string; label: string; max: number };
+
+export const IHS_MALE: IhsCategory[] = [
+  { key: 'body_length', part: 'Body', label: 'Length', max: 8 },
+  { key: 'body_form', part: 'Body', label: 'Form', max: 8 },
+  { key: 'body_colour', part: 'Body', label: 'Colour', max: 12 },
+  { key: 'dorsal_length', part: 'Dorsal fin', label: 'Length', max: 5 },
+  { key: 'dorsal_form', part: 'Dorsal fin', label: 'Form', max: 8 },
+  { key: 'dorsal_colour', part: 'Dorsal fin', label: 'Colour', max: 10 },
+  { key: 'caudal_length', part: 'Caudal fin', label: 'Length', max: 10 },
+  { key: 'caudal_form', part: 'Caudal fin', label: 'Form', max: 20 },
+  { key: 'caudal_colour', part: 'Caudal fin', label: 'Colour', max: 14 },
+  { key: 'vitality', part: 'Vitality / condition', label: 'Vitality', max: 5 },
+];
+
+export const IHS_FEMALE: IhsCategory[] = [
+  { key: 'size', part: 'Female', label: 'Size', max: 3 },
+  { key: 'form', part: 'Female', label: 'Form', max: 3 },
+  { key: 'matching', part: 'Female', label: 'Matching', max: 2 },
+  { key: 'vitality', part: 'Female', label: 'Vitality', max: 2 },
+];
+
+export function ihsCategories(sex: 'M' | 'F'): IhsCategory[] {
+  return sex === 'M' ? IHS_MALE : IHS_FEMALE;
+}
+
+export function ihsMaxTotal(sex: 'M' | 'F'): number {
+  return sex === 'M' ? 100 : 10;
+}
+
 export function labelOf<T extends string | number>(
   list: readonly { value: T; label: string }[],
   value: T | null | undefined,

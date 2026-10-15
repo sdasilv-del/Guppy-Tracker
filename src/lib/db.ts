@@ -3,6 +3,8 @@ import { decode } from 'base64-arraybuffer';
 import { supabase } from '@/lib/supabase';
 import type {
   BreedingGroup,
+  Evaluation,
+  FishTrait,
   Fish,
   FishMove,
   FishPhoto,
@@ -137,9 +139,13 @@ export async function updateFish(id: string, input: Partial<FishInput>): Promise
 }
 
 export async function deleteFish(id: string): Promise<void> {
-  const photos = await listFishPhotos(id);
-  if (photos.length > 0) {
-    await supabase.storage.from('fish-photos').remove(photos.map((p) => p.storage_path));
+  const [photos, evaluations] = await Promise.all([listFishPhotos(id), listEvaluations(id)]);
+  const paths = [
+    ...photos.map((p) => p.storage_path),
+    ...evaluations.map((e) => e.photo_path).filter((p): p is string => !!p),
+  ];
+  if (paths.length > 0) {
+    await supabase.storage.from('fish-photos').remove(paths);
   }
   must(await supabase.from('fish').delete().eq('id', id));
 }
@@ -188,18 +194,29 @@ export async function latestPhotoPaths(fishIds: string[]): Promise<Record<string
   return out;
 }
 
-export async function addFishPhoto(
+// Uploads a photo under the account's own folder and returns its storage path.
+export async function uploadPhoto(
   userId: string,
   fishId: string,
   base64: string,
   mimeType: string,
-): Promise<void> {
+): Promise<string> {
   const ext = mimeType === 'image/png' ? 'png' : 'jpg';
   const path = `${userId}/${fishId}/${Date.now()}.${ext}`;
   const upload = await supabase.storage
     .from('fish-photos')
     .upload(path, decode(base64), { contentType: mimeType });
   if (upload.error) throw new Error(upload.error.message);
+  return path;
+}
+
+export async function addFishPhoto(
+  userId: string,
+  fishId: string,
+  base64: string,
+  mimeType: string,
+): Promise<void> {
+  const path = await uploadPhoto(userId, fishId, base64, mimeType);
   must(await supabase.from('fish_photos').insert({ fish_id: fishId, storage_path: path }));
 }
 
@@ -372,4 +389,79 @@ export async function spawnMovesIntoTank(tankId: string): Promise<SpawnEvent[]> 
 // Fish picked from a spawn.
 export async function listPicks(spawnId: string): Promise<Fish[]> {
   return must(await supabase.from('fish').select('*').eq('spawn_id', spawnId).order('created_at'));
+}
+
+// Trait records ---------------------------------------------------------------
+
+export async function listFishTraits(fishId: string): Promise<FishTrait[]> {
+  return must(
+    await supabase
+      .from('fish_traits')
+      .select('*')
+      .eq('fish_id', fishId)
+      .order('recorded_on', { ascending: false })
+      .order('created_at', { ascending: false }),
+  );
+}
+
+// Trait records for several fish, newest first, e.g. a breeding group's members.
+export async function listTraitsForFish(fishIds: string[]): Promise<FishTrait[]> {
+  if (fishIds.length === 0) return [];
+  return must(
+    await supabase
+      .from('fish_traits')
+      .select('*')
+      .in('fish_id', fishIds)
+      .order('recorded_on', { ascending: false })
+      .order('created_at', { ascending: false }),
+  );
+}
+
+export async function getFishTrait(id: string): Promise<FishTrait | null> {
+  return must(await supabase.from('fish_traits').select('*').eq('id', id).maybeSingle());
+}
+
+export type FishTraitInput = Omit<FishTrait, 'id' | 'created_at'>;
+
+export async function saveFishTrait(id: string | null, input: FishTraitInput): Promise<void> {
+  if (id) must(await supabase.from('fish_traits').update(input).eq('id', id));
+  else must(await supabase.from('fish_traits').insert(input));
+}
+
+export async function deleteFishTrait(id: string): Promise<void> {
+  must(await supabase.from('fish_traits').delete().eq('id', id));
+}
+
+// IHS evaluations -------------------------------------------------------------
+
+export async function listEvaluations(fishId: string): Promise<Evaluation[]> {
+  return must(
+    await supabase
+      .from('evaluations')
+      .select('*')
+      .eq('fish_id', fishId)
+      .order('evaluated_on', { ascending: false })
+      .order('created_at', { ascending: false }),
+  );
+}
+
+export async function getEvaluation(id: string): Promise<Evaluation | null> {
+  return must(await supabase.from('evaluations').select('*').eq('id', id).maybeSingle());
+}
+
+// The total is added up by the database from the scores.
+export type EvaluationInput = Omit<Evaluation, 'id' | 'created_at' | 'total'>;
+
+export async function saveEvaluation(id: string | null, input: EvaluationInput): Promise<void> {
+  if (id) must(await supabase.from('evaluations').update(input).eq('id', id));
+  else must(await supabase.from('evaluations').insert(input));
+}
+
+export async function removeStoredPhotos(paths: string[]): Promise<void> {
+  if (paths.length > 0) await supabase.storage.from('fish-photos').remove(paths);
+}
+
+export async function deleteEvaluation(evaluation: Evaluation): Promise<void> {
+  if (evaluation.photo_path) await removeStoredPhotos([evaluation.photo_path]);
+  must(await supabase.from('evaluations').delete().eq('id', evaluation.id));
 }

@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { StyleSheet, View } from 'react-native';
 
 import { FishPicker } from '@/components/fish-picker';
+import { NewTraitField } from '@/components/new-trait-field';
 import {
   Button,
   ChipSelect,
@@ -12,9 +12,8 @@ import {
   MultiChipSelect,
   ToggleField,
 } from '@/components/ui';
-import { Spacing } from '@/constants/theme';
 import { INACTIVE_STATUSES } from '@/lib/constants';
-import { createTrait, type GroupInput } from '@/lib/db';
+import { type GroupInput } from '@/lib/db';
 import { blankToNull, todayISO } from '@/lib/format';
 import type { BreedingGroup, Fish, Tank, Trait } from '@/lib/types';
 
@@ -57,7 +56,6 @@ export function GroupForm({
   const [memberIds, setMemberIds] = useState<string[]>(initialMemberIds);
   const [traits, setTraits] = useState<Trait[]>(initialTraits);
   const [traitIds, setTraitIds] = useState<string[]>(initialTraitIds);
-  const [newTrait, setNewTrait] = useState('');
   const [moveIntoTank, setMoveIntoTank] = useState(!initial);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -68,25 +66,6 @@ export function GroupForm({
   const members = allFish.filter((f) => memberIds.includes(f.id));
   const males = members.filter((f) => f.sex === 'M').length;
   const females = members.filter((f) => f.sex === 'F').length;
-
-  async function addTrait() {
-    const trimmed = newTrait.trim();
-    if (!trimmed) return;
-    const existing = traits.find((t) => t.name.toLowerCase() === trimmed.toLowerCase());
-    if (existing) {
-      if (!traitIds.includes(existing.id)) setTraitIds([...traitIds, existing.id]);
-      setNewTrait('');
-      return;
-    }
-    try {
-      const trait = await createTrait(trimmed);
-      setTraits([...traits, trait].sort((a, b) => a.name.localeCompare(b.name)));
-      setTraitIds([...traitIds, trait.id]);
-      setNewTrait('');
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
-    }
-  }
 
   async function submit() {
     if (males === 0 || females === 0) {
@@ -131,12 +110,13 @@ export function GroupForm({
         value={traitIds}
         onChange={setTraitIds}
       />
-      <View style={styles.row}>
-        <View style={{ flex: 1 }}>
-          <Field label="New trait" value={newTrait} onChangeText={setNewTrait} placeholder="e.g. Dorsal length" />
-        </View>
-        <Button title="Add" variant="secondary" small onPress={addTrait} />
-      </View>
+      <NewTraitField
+        traits={traits}
+        onAdded={(trait, isNew) => {
+          if (isNew) setTraits([...traits, trait].sort((a, b) => a.name.localeCompare(b.name)));
+          if (!traitIds.includes(trait.id)) setTraitIds([...traitIds, trait.id]);
+        }}
+      />
       <ChipSelect
         label="Tank"
         options={tanks.map((t) => ({ value: t.id, label: tankLabel(t) }))}
@@ -169,7 +149,3 @@ export function GroupForm({
     </>
   );
 }
-
-const styles = StyleSheet.create({
-  row: { flexDirection: 'row', alignItems: 'flex-end', gap: Spacing.two },
-});

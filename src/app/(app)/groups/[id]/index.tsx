@@ -15,6 +15,7 @@ import {
   listSpawns,
   listTanks,
   listTraits,
+  listTraitsForFish,
   updateGroup,
 } from '@/lib/db';
 import { formatDate, todayISO } from '@/lib/format';
@@ -39,8 +40,12 @@ export default function GroupScreen() {
       listSpawns(),
     ]);
     const spawns = allSpawns.filter((s) => s.group_id === id);
-    const events = await listSpawnEvents(spawns.map((s) => s.id));
-    return { group, memberIds: members[id] ?? [], traitIds, fish, tanks, traits, spawns, events };
+    const memberIds = members[id] ?? [];
+    const [events, traitRecords] = await Promise.all([
+      listSpawnEvents(spawns.map((s) => s.id)),
+      listTraitsForFish(memberIds),
+    ]);
+    return { group, memberIds, traitIds, fish, tanks, traits, spawns, events, traitRecords };
   });
 
   if (!data && !error) return <Loading />;
@@ -61,6 +66,17 @@ export default function GroupScreen() {
   const tank = data.tanks.find((t) => t.id === group.tank_id);
   const traitNames = data.traits.filter((t) => data.traitIds.includes(t.id)).map((t) => t.name);
   const relations = closeRelations(members);
+  // Each member's latest record for each target trait, so the group can be judged against its goal.
+  const targetSummary = (fishId: string) =>
+    data.traitIds
+      .map((tid) => {
+        const latest = data.traitRecords.find((r) => r.fish_id === fishId && r.trait_id === tid);
+        if (!latest) return null;
+        const name = data.traits.find((t) => t.id === tid)?.name;
+        return `${name}: ${[latest.value, latest.score !== null ? latest.score : null].filter((v) => v !== null).join(' ')}`;
+      })
+      .filter(Boolean)
+      .join(' · ');
   const code = (fid: string | null) => (fid ? byId[fid]?.fish_code ?? '?' : 'Unknown');
 
   async function setEnded(endedOn: string | null) {
@@ -132,6 +148,7 @@ export default function GroupScreen() {
               f.generation,
               `Sire ${code(f.sire_id)} · Dam ${code(f.dam_id)}`,
               labelOf(FISH_STATUSES, f.status),
+              targetSummary(f.id),
             ]
               .filter(Boolean)
               .join(' · ')}
