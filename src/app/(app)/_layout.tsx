@@ -39,6 +39,7 @@ export default function AppLayout() {
       <Stack.Screen name="spawns/[id]/edit" options={{ title: 'Edit spawn' }} />
       <Stack.Screen name="spawns/[id]/event" options={{ title: 'Batch log' }} />
       <Stack.Screen name="spawns/[id]/pick" options={{ title: 'Pick a fish' }} />
+      <Stack.Screen name="spawns/[id]/pick-many" options={{ title: 'Pick several fish' }} />
     </Stack>
   );
 }

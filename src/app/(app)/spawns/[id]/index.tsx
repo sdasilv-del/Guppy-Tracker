@@ -63,10 +63,22 @@ export default function SpawnScreen() {
         ) : null}
       </Card>
 
-      <Button
-        title="Pick fish from this spawn"
-        onPress={() => router.push({ pathname: '/spawns/[id]/pick', params: { id } })}
-      />
+      <View style={styles.grid}>
+        <View style={styles.half}>
+          <Button
+            title="Pick several"
+            icon={Icons.fish}
+            onPress={() => router.push({ pathname: '/spawns/[id]/pick-many', params: { id } })}
+          />
+        </View>
+        <View style={styles.half}>
+          <Button
+            title="Pick one"
+            variant="secondary"
+            onPress={() => router.push({ pathname: '/spawns/[id]/pick', params: { id } })}
+          />
+        </View>
+      </View>
       <View style={styles.grid}>
         {SPAWN_EVENT_KINDS.map((k) => (
           <View key={k.value} style={styles.quarter}>
@@ -146,5 +158,6 @@ const styles = StyleSheet.create({
   bigNumber: { fontSize: 40, lineHeight: 46, fontWeight: '700' },
   grid: { flexDirection: 'row', gap: Spacing.two },
   quarter: { flex: 1 },
+  half: { flex: 1 },
   link: { textDecorationLine: 'underline', fontWeight: '500' },
 });
