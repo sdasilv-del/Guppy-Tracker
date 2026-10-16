@@ -11,6 +11,7 @@ export default function AppLayout() {
       <Stack.Screen name="tanks/[id]/edit" options={{ title: 'Edit tank' }} />
       <Stack.Screen name="tanks/[id]/water-test" options={{ title: 'Water test' }} />
       <Stack.Screen name="tanks/[id]/water-change" options={{ title: 'Water change' }} />
+      <Stack.Screen name="tanks/[id]/care" options={{ title: 'Feeding or treatment' }} />
       <Stack.Screen name="tanks/[id]/qr" options={{ title: 'Tank QR code' }} />
       <Stack.Screen name="tanks/[id]/add-fish" options={{ title: 'Move fish here' }} />
       <Stack.Screen
