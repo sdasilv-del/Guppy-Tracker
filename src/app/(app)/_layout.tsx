@@ -13,6 +13,15 @@ export default function AppLayout() {
       <Stack.Screen name="tanks/[id]/water-change" options={{ title: 'Water change' }} />
       <Stack.Screen name="tanks/[id]/qr" options={{ title: 'Tank QR code' }} />
       <Stack.Screen name="tanks/[id]/add-fish" options={{ title: 'Move fish here' }} />
+      <Stack.Screen
+        name="tanks/[id]/quick"
+        options={{
+          headerShown: false,
+          presentation: 'formSheet',
+          sheetAllowedDetents: 'fitToContents',
+          sheetGrabberVisible: true,
+        }}
+      />
       <Stack.Screen name="fish/new" options={{ title: 'New fish' }} />
       <Stack.Screen name="fish/[id]/index" options={{ title: 'Fish' }} />
       <Stack.Screen name="fish/[id]/edit" options={{ title: 'Edit fish' }} />
