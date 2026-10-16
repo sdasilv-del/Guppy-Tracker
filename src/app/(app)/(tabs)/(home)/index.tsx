@@ -2,7 +2,7 @@ import { type Href, router, Stack } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
 import { Pressable, StyleSheet, View } from 'react-native';
 
-import { Body, Card, Heading, Icon, LoadError, Muted, Screen } from '@/components/ui';
+import { Body, Card, Heading, Icon, ListRow, LoadError, Muted, Screen } from '@/components/ui';
 import { type IconName, Icons } from '@/constants/icons';
 import { Spacing } from '@/constants/theme';
 import { INACTIVE_STATUSES } from '@/lib/constants';
@@ -78,6 +78,13 @@ export default function HomeScreen() {
         <Stat value={data?.fry} label="Fry" href="/breeding" icon={Icons.spawn} />
         <Stat value={data?.forSale} label="For sale" href="/fish" icon={{ ios: 'tag', android: 'sell' }} />
       </View>
+
+      <ListRow
+        icon={Icons.export}
+        title="Export and print"
+        subtitle="Spreadsheets and show entry lists"
+        onPress={() => router.push('/export')}
+      />
     </Screen>
   );
 }
