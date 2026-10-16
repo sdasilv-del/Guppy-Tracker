@@ -43,7 +43,7 @@ export default function ScanScreen() {
         setTimeout(() => (handling.current = false), 1500);
         return;
       }
-      router.replace({ pathname: '/tanks/[id]', params: { id: tank.id } });
+      router.replace({ pathname: '/tanks/[id]/quick', params: { id: tank.id } });
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
       handling.current = false;
