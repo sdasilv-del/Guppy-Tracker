@@ -16,13 +16,14 @@ import {
   spawnMovesIntoTank,
 } from '@/lib/db';
 import { summarizeBatch } from '@/lib/spawn';
-import { formatDate } from '@/lib/format';
+import { formatDate, formatTemp, type TempUnit } from '@/lib/format';
 import type { WaterTest } from '@/lib/types';
+import { useAuth } from '@/lib/auth';
 import { useFocusData } from '@/lib/use-data';
 
-function readingSummary(t: WaterTest): string {
+function readingSummary(t: WaterTest, unit: TempUnit): string {
   const parts = [
-    t.temperature_c !== null ? `${t.temperature_c} °C` : null,
+    formatTemp(t.temperature_c, unit),
     t.ph !== null ? `pH ${t.ph}` : null,
     t.ammonia !== null ? `NH3 ${t.ammonia}` : null,
     t.nitrite !== null ? `NO2 ${t.nitrite}` : null,
@@ -35,6 +36,7 @@ function readingSummary(t: WaterTest): string {
 
 export default function TankScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const unit = useAuth().profile?.temperature_unit ?? 'C';
   const { data, error } = useFocusData(async () => {
     const [tank, fish, tests, changes, allSpawns, movesIn, allFish] = await Promise.all([
       getTank(id),
@@ -143,7 +145,7 @@ export default function TankScreen() {
         {latest ? (
           <Card>
             <Muted>Latest, {formatDate(latest.tested_on)}</Muted>
-            <InfoRow label="Temperature" value={latest.temperature_c !== null ? `${latest.temperature_c} °C` : null} />
+            <InfoRow label="Temperature" value={formatTemp(latest.temperature_c, unit)} />
             <InfoRow label="pH" value={latest.ph} />
             <InfoRow label="Ammonia" value={latest.ammonia !== null ? `${latest.ammonia} ppm` : null} />
             <InfoRow label="Nitrite" value={latest.nitrite !== null ? `${latest.nitrite} ppm` : null} />
@@ -159,7 +161,7 @@ export default function TankScreen() {
             icon={Icons.waterTest}
             key={t.id}
             title={formatDate(t.tested_on)}
-            subtitle={readingSummary(t)}
+            subtitle={readingSummary(t, unit)}
             onPress={() => go('/tanks/[id]/water-test', { testId: t.id })}
           />
         ))}

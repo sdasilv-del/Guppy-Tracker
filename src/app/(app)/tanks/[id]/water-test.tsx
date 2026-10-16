@@ -5,11 +5,12 @@ import { Alert, StyleSheet, View } from 'react-native';
 import { Button, DateField, ErrorText, Field, Loading, NumberField, Screen } from '@/components/ui';
 import { Spacing } from '@/constants/theme';
 import { deleteWaterTest, getWaterTest, saveWaterTest } from '@/lib/db';
-import { blankToNull, numberText, parseNumber, todayISO } from '@/lib/format';
+import { useAuth } from '@/lib/auth';
+import { blankToNull, fromDisplayTemp, numberText, parseNumber, todayISO, toDisplayTemp } from '@/lib/format';
 import { attempt } from '@/lib/alerts';
 
 const READINGS = [
-  { key: 'temperature_c', label: 'Temperature (°C)' },
+  { key: 'temperature_c', label: 'Temperature' },
   { key: 'ph', label: 'pH' },
   { key: 'ammonia', label: 'Ammonia (ppm)' },
   { key: 'nitrite', label: 'Nitrite (ppm)' },
@@ -22,6 +23,8 @@ type ReadingKey = (typeof READINGS)[number]['key'];
 
 export default function WaterTestScreen() {
   const { id, testId } = useLocalSearchParams<{ id: string; testId?: string }>();
+  const unit = useAuth().profile?.temperature_unit ?? 'C';
+  const labelFor = (r: (typeof READINGS)[number]) => (r.key === 'temperature_c' ? `Temperature (°${unit})` : r.label);
   const [loading, setLoading] = useState(!!testId);
   const [date, setDate] = useState<string | null>(todayISO());
   const [values, setValues] = useState<Record<ReadingKey, string>>({
@@ -43,7 +46,7 @@ export default function WaterTestScreen() {
       if (t) {
         setDate(t.tested_on);
         setValues({
-          temperature_c: numberText(t.temperature_c),
+          temperature_c: t.temperature_c === null ? '' : numberText(toDisplayTemp(t.temperature_c, unit)),
           ph: numberText(t.ph),
           ammonia: numberText(t.ammonia),
           nitrite: numberText(t.nitrite),
@@ -59,24 +62,25 @@ export default function WaterTestScreen() {
         setError(e instanceof Error ? e.message : String(e));
         setLoading(false);
       });
-  }, [testId]);
+  }, [testId, unit]);
 
   if (loading) return <Loading />;
 
   async function save() {
     for (const r of READINGS) {
       if (values[r.key].trim() !== '' && parseNumber(values[r.key]) === null) {
-        setError(`${r.label} must be a number.`);
+        setError(`${labelFor(r)} must be a number.`);
         return;
       }
     }
+    const temp = parseNumber(values.temperature_c);
     setBusy(true);
     setError(null);
     try {
       await saveWaterTest(testId ?? null, {
         tank_id: id,
         tested_on: date ?? todayISO(),
-        temperature_c: parseNumber(values.temperature_c),
+        temperature_c: temp === null ? null : fromDisplayTemp(temp, unit),
         ph: parseNumber(values.ph),
         ammonia: parseNumber(values.ammonia),
         nitrite: parseNumber(values.nitrite),
@@ -110,7 +114,7 @@ export default function WaterTestScreen() {
         {READINGS.map((r) => (
           <View key={r.key} style={styles.cell}>
             <NumberField
-              label={r.label}
+              label={labelFor(r)}
               value={values[r.key]}
               onChangeText={(t) => setValues({ ...values, [r.key]: t })}
             />
