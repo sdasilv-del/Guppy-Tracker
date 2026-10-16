@@ -6,6 +6,7 @@ export type Profile = {
   breeder_initials: string;
   club: string | null;
   country: string | null;
+  temperature_unit: 'C' | 'F';
 };
 
 export type Tank = {
