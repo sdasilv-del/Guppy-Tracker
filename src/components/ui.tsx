@@ -29,6 +29,8 @@ export function Screen({ children, scroll = true }: { children: ReactNode; scrol
       style={{ backgroundColor: theme.background }}
       contentContainerStyle={styles.screen}
       keyboardShouldPersistTaps="handled"
+      // Pads the content below the header and above the tab bar, so nothing slides underneath them.
+      contentInsetAdjustmentBehavior="automatic"
       // Keeps the focused field above the keyboard; dragging the page down puts the keyboard away.
       automaticallyAdjustKeyboardInsets
       keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}>
