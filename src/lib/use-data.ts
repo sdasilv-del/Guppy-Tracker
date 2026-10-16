@@ -1,6 +1,8 @@
 import { useIsFocused } from 'expo-router';
 import { useEffect, useEffectEvent, useState } from 'react';
 
+import { onSynced } from '@/lib/offline';
+
 // Loads data whenever the screen comes into focus, so lists refresh after editing elsewhere.
 export function useFocusData<T>(load: () => Promise<T>) {
   const focused = useIsFocused();
@@ -24,6 +26,12 @@ export function useFocusData<T>(load: () => Promise<T>) {
     // Data is set after the request resolves, not synchronously in this effect.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     if (focused) onFocus();
+  }, [focused]);
+
+  // Saves made offline show up once they reach the server.
+  useEffect(() => {
+    if (!focused) return;
+    return onSynced(() => onFocus());
   }, [focused]);
 
   return { data, error, reload };

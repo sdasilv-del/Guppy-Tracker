@@ -17,6 +17,7 @@ import {
 
 import { SymbolView } from 'expo-symbols';
 
+import { SyncBanner } from '@/components/sync-banner';
 import { type IconName, Icons } from '@/constants/icons';
 import { Spacing } from '@/constants/theme';
 import { formatDate, fromISODate, toISODate } from '@/lib/format';
@@ -25,7 +26,12 @@ import { useTheme } from '@/hooks/use-theme';
 export function Screen({ children, scroll = true }: { children: ReactNode; scroll?: boolean }) {
   const theme = useTheme();
   if (!scroll) {
-    return <View style={[styles.screen, { backgroundColor: theme.background }]}>{children}</View>;
+    return (
+      <View style={[styles.screen, { backgroundColor: theme.background }]}>
+        <SyncBanner />
+        {children}
+      </View>
+    );
   }
   return (
     <ScrollView
@@ -37,6 +43,7 @@ export function Screen({ children, scroll = true }: { children: ReactNode; scrol
       // Keeps the focused field above the keyboard; dragging the page down puts the keyboard away.
       automaticallyAdjustKeyboardInsets
       keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}>
+      <SyncBanner />
       {children}
     </ScrollView>
   );
