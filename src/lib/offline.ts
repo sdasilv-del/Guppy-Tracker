@@ -142,8 +142,9 @@ function plainHeaders(init?: RequestInit): Record<string, string> {
 }
 
 function isNetworkError(e: unknown) {
-  // Aborts are deliberate, not a lost connection.
-  return !(e instanceof Error && (e.name === 'AbortError' || e.name === 'TimeoutError'));
+  // A lost connection makes fetch throw a TypeError ("Network request failed"). Anything else,
+  // such as an abort or a bug, is passed through so the real error shows instead of "offline".
+  return e instanceof TypeError;
 }
 
 // 504 rather than 503: Supabase retries 503s, which would only delay the message.
