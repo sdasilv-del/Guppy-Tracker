@@ -16,8 +16,9 @@ import {
   spawnMovesIntoTank,
 } from '@/lib/db';
 import { summarizeBatch } from '@/lib/spawn';
-import { formatDate } from '@/lib/format';
+import { formatDate, todayISO } from '@/lib/format';
 import type { WaterTest } from '@/lib/types';
+import { addDays, dueLabel } from '@/lib/reminders';
 import { useFocusData } from '@/lib/use-data';
 
 function readingSummary(t: WaterTest): string {
@@ -75,6 +76,19 @@ export default function TankScreen() {
         <InfoRow label="Name" value={tank.name} />
         <InfoRow label="Purpose" value={labelOf(TANK_PURPOSES, tank.purpose)} />
         <InfoRow label="Size" value={tank.size_gallons ? `${tank.size_gallons} gallons` : null} />
+        <InfoRow
+          label="Water changes"
+          value={
+            tank.water_change_every_days
+              ? `Every ${tank.water_change_every_days} days · ${dueLabel(
+                  data.changes[0]
+                    ? addDays(data.changes[0].changed_on, tank.water_change_every_days)
+                    : todayISO(),
+                  todayISO(),
+                ).toLowerCase()}`
+              : null
+          }
+        />
         {tank.notes ? <Muted>{tank.notes}</Muted> : null}
       </Card>
 

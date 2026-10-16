@@ -23,6 +23,7 @@ export const Icons = {
   show: { ios: 'trophy', android: 'emoji_events' },
   sale: { ios: 'tag', android: 'sell' },
   strain: { ios: 'chart.bar.xaxis', android: 'bar_chart' },
+  reminder: { ios: 'bell', android: 'notifications' },
   offline: { ios: 'icloud.slash', android: 'cloud_off' },
   waiting: { ios: 'icloud.and.arrow.up', android: 'cloud_upload' },
   warning: { ios: 'exclamationmark.triangle', android: 'warning' },
