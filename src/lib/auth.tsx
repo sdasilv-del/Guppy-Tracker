@@ -38,7 +38,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await loadProfile(data.session?.user.id);
       setLoading(false);
     });
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, next) => {
+    const { data: sub } = supabase.auth.onAuthStateChange((event, next) => {
+      // getSession above handles the first load. Supabase reports no session here when it can't
+      // refresh the sign-in offline, which would wrongly show the sign-in screen.
+      if (event === 'INITIAL_SESSION') return;
       setSession(next);
       loadProfile(next?.user.id);
     });

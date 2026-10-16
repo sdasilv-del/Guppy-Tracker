@@ -23,5 +23,8 @@ export const Icons = {
   show: { ios: 'trophy', android: 'emoji_events' },
   sale: { ios: 'tag', android: 'sell' },
   strain: { ios: 'chart.bar.xaxis', android: 'bar_chart' },
+  offline: { ios: 'icloud.slash', android: 'cloud_off' },
+  waiting: { ios: 'icloud.and.arrow.up', android: 'cloud_upload' },
+  warning: { ios: 'exclamationmark.triangle', android: 'warning' },
   chevron: { ios: 'chevron.right', android: 'chevron_right' },
 } satisfies Record<string, IconName>;
