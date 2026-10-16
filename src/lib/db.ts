@@ -3,6 +3,8 @@ import { decode } from 'base64-arraybuffer';
 import { supabase } from '@/lib/supabase';
 import type {
   BreedingGroup,
+  CareKind,
+  CareLog,
   Evaluation,
   FishTrait,
   Fish,
@@ -114,6 +116,47 @@ export async function saveWaterChange(id: string | null, input: WaterChangeInput
 
 export async function deleteWaterChange(id: string): Promise<void> {
   must(await supabase.from('water_changes').delete().eq('id', id));
+}
+
+// Feeding and treatments ---------------------------------------------------
+
+export async function listCareLogs(tankId: string): Promise<CareLog[]> {
+  return must(
+    await supabase
+      .from('care_logs')
+      .select('*')
+      .eq('tank_id', tankId)
+      .order('logged_on', { ascending: false })
+      .order('created_at', { ascending: false }),
+  );
+}
+
+export async function getCareLog(id: string): Promise<CareLog | null> {
+  return must(await supabase.from('care_logs').select('*').eq('id', id).maybeSingle());
+}
+
+// Foods or medications used before, most recent first, so the form can offer them as one-tap choices.
+export async function recentCareItems(kind: CareKind): Promise<string[]> {
+  const rows = must(
+    await supabase
+      .from('care_logs')
+      .select('item')
+      .eq('kind', kind)
+      .order('created_at', { ascending: false })
+      .limit(200),
+  ) as Pick<CareLog, 'item'>[];
+  return [...new Set(rows.map((r) => r.item))].slice(0, 8);
+}
+
+export type CareLogInput = Omit<CareLog, 'id' | 'created_at'>;
+
+export async function saveCareLog(id: string | null, input: CareLogInput): Promise<void> {
+  if (id) must(await supabase.from('care_logs').update(input).eq('id', id));
+  else must(await supabase.from('care_logs').insert(input));
+}
+
+export async function deleteCareLog(id: string): Promise<void> {
+  must(await supabase.from('care_logs').delete().eq('id', id));
 }
 
 // Fish --------------------------------------------------------------------
