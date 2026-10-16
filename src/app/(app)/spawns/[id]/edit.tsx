@@ -5,6 +5,7 @@ import { SpawnForm } from '@/components/spawn-form';
 import { Button, ErrorText, Loading, Screen } from '@/components/ui';
 import { deleteSpawn, getSpawn, groupMembers, listFish, listGroups, listTanks, updateSpawn } from '@/lib/db';
 import { useFocusData } from '@/lib/use-data';
+import { attempt } from '@/lib/alerts';
 
 export default function EditSpawnScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -32,10 +33,7 @@ export default function EditSpawnScreen() {
         {
           text: 'Delete',
           style: 'destructive',
-          onPress: async () => {
-            await deleteSpawn(id);
-            router.dismissTo('/spawns');
-          },
+          onPress: () => attempt(() => deleteSpawn(id), () => router.dismissTo('/spawns')),
         },
       ],
     );

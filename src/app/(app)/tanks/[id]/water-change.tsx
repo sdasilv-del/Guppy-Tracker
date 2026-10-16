@@ -5,6 +5,7 @@ import { Alert } from 'react-native';
 import { Button, DateField, ErrorText, Field, Loading, NumberField, Screen } from '@/components/ui';
 import { deleteWaterChange, getWaterChange, saveWaterChange } from '@/lib/db';
 import { blankToNull, numberText, parseNumber, todayISO } from '@/lib/format';
+import { attempt } from '@/lib/alerts';
 
 export default function WaterChangeScreen() {
   const { id, changeId } = useLocalSearchParams<{ id: string; changeId?: string }>();
@@ -24,7 +25,11 @@ export default function WaterChangeScreen() {
         setNotes(c.notes ?? '');
       }
       setLoading(false);
-    });
+    })
+      .catch((e) => {
+        setError(e instanceof Error ? e.message : String(e));
+        setLoading(false);
+      });
   }, [changeId]);
 
   if (loading) return <Loading />;
@@ -57,10 +62,7 @@ export default function WaterChangeScreen() {
       {
         text: 'Delete',
         style: 'destructive',
-        onPress: async () => {
-          await deleteWaterChange(changeId!);
-          router.back();
-        },
+        onPress: () => attempt(() => deleteWaterChange(changeId!), () => router.back()),
       },
     ]);
   }

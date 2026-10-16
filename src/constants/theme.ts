@@ -14,10 +14,12 @@ export const Colors = {
     backgroundElement: '#F0F0F3',
     backgroundSelected: '#E0E1E6',
     textSecondary: '#60646C',
-    accent: '#1A7FD4',
+    accent: '#156EBD',
     onAccent: '#ffffff',
     danger: '#C62828',
-    border: '#D9DADF',
+    // Field and chip outlines meet the 3:1 contrast minimum for controls; divider is for thin lines between rows.
+    border: '#80838D',
+    divider: '#D9DADF',
   },
   dark: {
     text: '#ffffff',
@@ -28,7 +30,8 @@ export const Colors = {
     accent: '#4FA8F0',
     onAccent: '#001A33',
     danger: '#EF6B6B',
-    border: '#3A3D42',
+    border: '#6F737A',
+    divider: '#3A3D42',
   },
 } as const;
 

@@ -5,6 +5,7 @@ import { FishForm } from '@/components/fish-form';
 import { Button, ErrorText, Loading, Screen } from '@/components/ui';
 import { deleteFish, listFish, listTanks, updateFish } from '@/lib/db';
 import { useFocusData } from '@/lib/use-data';
+import { attempt } from '@/lib/alerts';
 
 export default function EditFishScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -26,10 +27,7 @@ export default function EditFishScreen() {
         {
           text: 'Delete',
           style: 'destructive',
-          onPress: async () => {
-            await deleteFish(id);
-            router.dismissTo('/fish');
-          },
+          onPress: () => attempt(() => deleteFish(id), () => router.dismissTo('/fish')),
         },
       ],
     );

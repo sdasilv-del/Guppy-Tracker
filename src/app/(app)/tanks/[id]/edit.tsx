@@ -5,6 +5,7 @@ import { TankForm } from '@/components/tank-form';
 import { Button, ErrorText, Loading, Screen } from '@/components/ui';
 import { deleteTank, getTank, updateTank } from '@/lib/db';
 import { useFocusData } from '@/lib/use-data';
+import { attempt } from '@/lib/alerts';
 
 export default function EditTankScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -22,10 +23,7 @@ export default function EditTankScreen() {
         {
           text: 'Delete',
           style: 'destructive',
-          onPress: async () => {
-            await deleteTank(id);
-            router.dismissTo('/tanks');
-          },
+          onPress: () => attempt(() => deleteTank(id), () => router.dismissTo('/tanks')),
         },
       ],
     );

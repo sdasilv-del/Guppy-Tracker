@@ -1,9 +1,9 @@
 import { router, useLocalSearchParams } from 'expo-router';
 
-import { FishForm } from '@/components/fish-form';
+import { FishForm, type PickedPhoto } from '@/components/fish-form';
 import { ErrorText, Loading, Muted, Screen } from '@/components/ui';
 import { useAuth } from '@/lib/auth';
-import { addFishPhoto, createFish, getSpawn, listFish, listTanks } from '@/lib/db';
+import { addFishPhoto, createFish, type FishInput, getSpawn, listFish, listTanks } from '@/lib/db';
 import { useFocusData } from '@/lib/use-data';
 
 // Picking a fry makes it a fish record, with its parents, birth date, strain and generation taken from the spawn.
@@ -18,6 +18,11 @@ export default function PickFishScreen() {
   if (!data && !error) return <Loading />;
   if (!data?.spawn) return <Screen><ErrorText message={error ?? 'Spawn not found.'} /></Screen>;
   const spawn = data.spawn;
+
+  async function savePick(input: FishInput, photo: PickedPhoto | null) {
+    const fish = await createFish(input);
+    if (photo && session) await addFishPhoto(session.user.id, fish.id, photo.base64, photo.mimeType);
+  }
   const sire = data.fish.find((f) => f.id === spawn.sire_id);
 
   return (
@@ -45,11 +50,14 @@ export default function PickFishScreen() {
         tanks={data.tanks}
         submitLabel="Save picked fish"
         onSubmit={async (input, photo) => {
-          const fish = await createFish(input);
-          if (photo && session) {
-            await addFishPhoto(session.user.id, fish.id, photo.base64, photo.mimeType);
-          }
+          await savePick(input, photo);
           router.back();
+        }}
+        againLabel="Save and pick another"
+        onSubmitAgain={async (input, photo) => {
+          await savePick(input, photo);
+          // A fresh form for the next fry from the same spawn.
+          router.replace({ pathname: '/spawns/[id]/pick', params: { id, n: String(Date.now()) } });
         }}
       />
     </Screen>

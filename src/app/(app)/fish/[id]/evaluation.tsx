@@ -47,6 +47,8 @@ import {
 import { blankToNull, numberText, parseNumber, todayISO } from '@/lib/format';
 import type { Evaluation, Fish } from '@/lib/types';
 import { useTheme } from '@/hooks/use-theme';
+import { useUnsavedChanges } from '@/hooks/use-unsaved-changes';
+import { attempt } from '@/lib/alerts';
 
 function ScoreRow({
   category,
@@ -88,6 +90,11 @@ function ScoreRow({
         />
         <Text style={[styles.max, { color: theme.textSecondary }]}>/ {category.max}</Text>
       </View>
+      {bad ? (
+        <Text accessibilityLiveRegion="polite" style={[styles.guide, { color: theme.danger }]}>
+          Enter a number from 0 to {category.max}.
+        </Text>
+      ) : null}
       {guide.map((line) => (
         <Text key={line} style={[styles.guide, { color: theme.textSecondary }]}>
           {line}
@@ -159,6 +166,16 @@ export default function EvaluationScreen() {
       });
   }, [id, evalId]);
 
+  // Unsaved-changes check: compares the form with how it looked once loaded.
+  const snapshot = JSON.stringify({ kind, date, event, judge, placement, scores, scoreNotes, scoreReasons, notes, photo: photo?.uri });
+  const [baseline, setBaseline] = useState<string | null>(null);
+  useEffect(() => {
+    // Taken once, right after loading finishes.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (!loading && baseline === null) setBaseline(snapshot);
+  }, [loading, baseline, snapshot]);
+  const { allowLeave, blockLeave } = useUnsavedChanges(baseline !== null && snapshot !== baseline);
+
   if (loading) return <Loading />;
   if (!fish) return <Screen><ErrorText message={error ?? 'Fish not found.'} /></Screen>;
 
@@ -226,6 +243,7 @@ export default function EvaluationScreen() {
       reasonKeys.map((key) => [key, scoreNotes[key]?.trim() ?? '']).filter(([, v]) => v !== ''),
     );
     setBusy(true);
+    allowLeave();
     setError(null);
     try {
       let photoPath = existing?.photo_path ?? null;
@@ -252,6 +270,7 @@ export default function EvaluationScreen() {
       router.back();
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
+      blockLeave();
       setBusy(false);
     }
   }
@@ -262,9 +281,9 @@ export default function EvaluationScreen() {
       {
         text: 'Delete',
         style: 'destructive',
-        onPress: async () => {
-          await deleteEvaluation(existing!);
-          router.back();
+        onPress: () => {
+          allowLeave();
+          attempt(() => deleteEvaluation(existing!), () => router.back()).finally(blockLeave);
         },
       },
     ]);
