@@ -29,6 +29,8 @@ export default function AppLayout() {
       <Stack.Screen name="fish/[id]/pedigree" options={{ title: 'Pedigree' }} />
       <Stack.Screen name="fish/[id]/trait" options={{ title: 'Trait' }} />
       <Stack.Screen name="fish/[id]/evaluation" options={{ title: 'IHS evaluation' }} />
+      <Stack.Screen name="fish/[id]/show" options={{ title: 'Show entry' }} />
+      <Stack.Screen name="fish/[id]/sale" options={{ title: 'Sale' }} />
       <Stack.Screen name="groups/index" options={{ title: 'Breeding groups' }} />
       <Stack.Screen name="groups/new" options={{ title: 'New breeding group' }} />
       <Stack.Screen name="groups/[id]/index" options={{ title: 'Breeding group' }} />

@@ -38,6 +38,8 @@ import {
   deleteFishPhoto,
   groupIdsForFish,
   listEvaluations,
+  listSales,
+  listShowEntries,
   listFish,
   listFishTraits,
   listGroups,
@@ -47,7 +49,6 @@ import {
   listTanks,
   listTraits,
   signedPhotoUrls,
-  updateFish,
 } from '@/lib/db';
 import { formatAge, formatDate } from '@/lib/format';
 import type { FishPhoto } from '@/lib/types';
@@ -61,7 +62,7 @@ export default function FishScreen() {
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const { data, error, reload } = useFocusData(async () => {
-    const [allFish, tanks, photos, moves, spawns, groups, groupIds, traitRecords, evaluations, traits] =
+    const [allFish, tanks, photos, moves, spawns, groups, groupIds, traitRecords, evaluations, traits, shows, sales] =
       await Promise.all([
       listFish(),
       listTanks(),
@@ -73,6 +74,8 @@ export default function FishScreen() {
       listFishTraits(id),
       listEvaluations(id),
       listTraits(),
+      listShowEntries(id),
+      listSales(id),
     ]);
     const urls = await signedPhotoUrls(photos.map((p) => p.storage_path));
     return {
@@ -86,6 +89,8 @@ export default function FishScreen() {
       groups: groups.filter((g) => groupIds.includes(g.id)),
       traitRecords,
       evaluations,
+      shows,
+      sales,
       traitNames: Object.fromEntries(traits.map((t) => [t.id, t.name])),
     };
   });
@@ -220,15 +225,6 @@ export default function FishScreen() {
           <Button title="Move" icon={Icons.move} onPress={() => router.push({ pathname: '/fish/[id]/move', params: { id } })} />
         </View>
       </View>
-      {fish.status === 'for_sale' ? (
-        <Button
-          title="Mark as sold"
-          variant="secondary"
-          busy={busy}
-          onPress={() => run(() => updateFish(id, { status: 'sold', tank_id: null }))}
-        />
-      ) : null}
-
       <Section
         title="Traits"
         action={
@@ -275,6 +271,52 @@ export default function FishScreen() {
               .filter(Boolean)
               .join(' · ')}
             onPress={() => router.push({ pathname: '/fish/[id]/evaluation', params: { id, evalId: e.id } })}
+          />
+        ))}
+      </Section>
+
+      <Section
+        title="Shows"
+        action={
+          <Button
+            title="Add entry"
+            small
+            onPress={() => router.push({ pathname: '/fish/[id]/show', params: { id } })}
+          />
+        }>
+        {data.shows.length === 0 ? <Empty>No show entries yet.</Empty> : null}
+        {data.shows.map((e) => (
+          <ListRow
+            icon={Icons.show}
+            key={e.id}
+            title={`${e.show_name} · ${formatDate(e.shown_on)}`}
+            subtitle={[e.show_class, e.placement, e.points !== null ? `${e.points} pts` : null].filter(Boolean).join(' · ')}
+            onPress={() => router.push({ pathname: '/fish/[id]/show', params: { id, entryId: e.id } })}
+          />
+        ))}
+      </Section>
+
+      <Section
+        title="Sales"
+        action={
+          fish.status === 'sold' ? null : (
+            <Button
+              title="Record sale"
+              small
+              onPress={() => router.push({ pathname: '/fish/[id]/sale', params: { id } })}
+            />
+          )
+        }>
+        {data.sales.length === 0 ? (
+          <Empty>{fish.status === 'sold' ? 'Marked sold, with no sale details.' : 'Not sold.'}</Empty>
+        ) : null}
+        {data.sales.map((s) => (
+          <ListRow
+            icon={Icons.sale}
+            key={s.id}
+            title={`${s.price !== null ? `${s.price.toFixed(2)} ${s.currency}` : 'Sold'} · ${formatDate(s.sold_on)}`}
+            subtitle={[s.buyer, s.notes].filter(Boolean).join(' · ')}
+            onPress={() => router.push({ pathname: '/fish/[id]/sale', params: { id, saleId: s.id } })}
           />
         ))}
       </Section>
