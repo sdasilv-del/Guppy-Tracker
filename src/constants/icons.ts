@@ -20,6 +20,8 @@ export const Icons = {
   add: { ios: 'plus', android: 'add' },
   camera: { ios: 'camera', android: 'photo_camera' },
   library: { ios: 'photo.on.rectangle', android: 'photo_library' },
+  show: { ios: 'trophy', android: 'emoji_events' },
+  sale: { ios: 'tag', android: 'sell' },
   strain: { ios: 'chart.bar.xaxis', android: 'bar_chart' },
   chevron: { ios: 'chevron.right', android: 'chevron_right' },
 } satisfies Record<string, IconName>;

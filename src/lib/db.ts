@@ -8,6 +8,8 @@ import type {
   Fish,
   FishMove,
   FishPhoto,
+  Sale,
+  ShowEntry,
   Spawn,
   SpawnEvent,
   Tank,
@@ -470,4 +472,60 @@ export async function removeStoredPhotos(paths: string[]): Promise<void> {
 export async function deleteEvaluation(evaluation: Evaluation): Promise<void> {
   if (evaluation.photo_path) await removeStoredPhotos([evaluation.photo_path]);
   must(await supabase.from('evaluations').delete().eq('id', evaluation.id));
+}
+
+// Show entries ------------------------------------------------------------------
+
+export async function listShowEntries(fishId: string): Promise<ShowEntry[]> {
+  return must(
+    await supabase
+      .from('show_entries')
+      .select('*')
+      .eq('fish_id', fishId)
+      .order('shown_on', { ascending: false })
+      .order('created_at', { ascending: false }),
+  );
+}
+
+export async function getShowEntry(id: string): Promise<ShowEntry | null> {
+  return must(await supabase.from('show_entries').select('*').eq('id', id).maybeSingle());
+}
+
+export type ShowEntryInput = Omit<ShowEntry, 'id' | 'created_at'>;
+
+export async function saveShowEntry(id: string | null, input: ShowEntryInput): Promise<void> {
+  if (id) must(await supabase.from('show_entries').update(input).eq('id', id));
+  else must(await supabase.from('show_entries').insert(input));
+}
+
+export async function deleteShowEntry(id: string): Promise<void> {
+  must(await supabase.from('show_entries').delete().eq('id', id));
+}
+
+// Sales ---------------------------------------------------------------------------
+
+export async function listSales(fishId?: string): Promise<Sale[]> {
+  let query = supabase.from('sales').select('*');
+  if (fishId) query = query.eq('fish_id', fishId);
+  return must(await query.order('sold_on', { ascending: false }).order('created_at', { ascending: false }));
+}
+
+export async function getSale(id: string): Promise<Sale | null> {
+  return must(await supabase.from('sales').select('*').eq('id', id).maybeSingle());
+}
+
+export type SaleInput = Omit<Sale, 'id' | 'created_at'>;
+
+// A new sale also marks the fish sold and takes it out of its tank.
+export async function saveSale(id: string | null, input: SaleInput): Promise<void> {
+  if (id) {
+    must(await supabase.from('sales').update(input).eq('id', id));
+    return;
+  }
+  must(await supabase.from('sales').insert(input));
+  must(await supabase.from('fish').update({ status: 'sold', tank_id: null }).eq('id', input.fish_id));
+}
+
+export async function deleteSale(id: string): Promise<void> {
+  must(await supabase.from('sales').delete().eq('id', id));
 }

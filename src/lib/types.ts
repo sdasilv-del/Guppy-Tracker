@@ -164,3 +164,26 @@ export type Evaluation = {
   notes: string | null;
   created_at: string;
 };
+
+export type ShowEntry = {
+  id: string;
+  fish_id: string;
+  show_name: string;
+  shown_on: string;
+  show_class: string | null;
+  placement: string | null;
+  points: number | null;
+  notes: string | null;
+  created_at: string;
+};
+
+export type Sale = {
+  id: string;
+  fish_id: string;
+  sold_on: string;
+  buyer: string | null;
+  price: number | null;
+  currency: string;
+  notes: string | null;
+  created_at: string;
+};
