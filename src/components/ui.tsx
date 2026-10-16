@@ -15,6 +15,9 @@ import {
   type ViewStyle,
 } from 'react-native';
 
+import { SymbolView } from 'expo-symbols';
+
+import { type IconName, Icons } from '@/constants/icons';
 import { Spacing } from '@/constants/theme';
 import { formatDate, fromISODate, toISODate } from '@/lib/format';
 import { useTheme } from '@/hooks/use-theme';
@@ -37,6 +40,11 @@ export function Screen({ children, scroll = true }: { children: ReactNode; scrol
       {children}
     </ScrollView>
   );
+}
+
+export function Icon({ name, size = 20, color }: { name: IconName; size?: number; color?: string }) {
+  const theme = useTheme();
+  return <SymbolView name={name} size={size} tintColor={color ?? theme.accent} />;
 }
 
 export function Heading({ children }: { children: ReactNode }) {
@@ -100,6 +108,7 @@ export function Button({
   disabled,
   busy,
   small,
+  icon,
 }: {
   title: string;
   onPress: () => void;
@@ -107,6 +116,7 @@ export function Button({
   disabled?: boolean;
   busy?: boolean;
   small?: boolean;
+  icon?: IconName;
 }) {
   const theme = useTheme();
   const bg =
@@ -129,7 +139,10 @@ export function Button({
       {busy ? (
         <ActivityIndicator color={fg} />
       ) : (
-        <Text style={[styles.buttonText, small && styles.buttonTextSmall, { color: fg }]}>{title}</Text>
+        <View style={styles.buttonContent}>
+          {icon ? <Icon name={icon} size={small ? 16 : 18} color={fg} /> : null}
+          <Text style={[styles.buttonText, small && styles.buttonTextSmall, { color: fg }]}>{title}</Text>
+        </View>
       )}
     </Pressable>
   );
@@ -343,11 +356,13 @@ export function ListRow({
   subtitle,
   right,
   onPress,
+  icon,
 }: {
   title: string;
   subtitle?: string;
   right?: ReactNode;
   onPress?: () => void;
+  icon?: IconName;
 }) {
   const theme = useTheme();
   return (
@@ -359,11 +374,17 @@ export function ListRow({
         styles.listRow,
         { backgroundColor: theme.backgroundElement, opacity: pressed ? 0.75 : 1 },
       ]}>
+      {icon ? (
+        <View style={[styles.listIcon, { backgroundColor: theme.backgroundSelected }]}>
+          <Icon name={icon} size={18} />
+        </View>
+      ) : null}
       <View style={{ flex: 1 }}>
         <Text style={[styles.listTitle, { color: theme.text }]}>{title}</Text>
         {subtitle ? <Text style={[styles.muted, { color: theme.textSecondary }]}>{subtitle}</Text> : null}
       </View>
       {right}
+      {onPress ? <Icon name={Icons.chevron} size={13} color={theme.textSecondary} /> : null}
     </Pressable>
   );
 }
@@ -462,4 +483,6 @@ const styles = StyleSheet.create({
     padding: Spacing.three,
   },
   listTitle: { fontSize: 16, fontWeight: '600' },
+  listIcon: { width: 36, height: 36, borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
+  buttonContent: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
 });

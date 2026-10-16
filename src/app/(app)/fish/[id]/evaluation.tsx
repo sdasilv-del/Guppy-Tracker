@@ -20,6 +20,7 @@ import {
   Muted,
   Screen,
 } from '@/components/ui';
+import { Icons } from '@/constants/icons';
 import { Spacing } from '@/constants/theme';
 import {
   BASE_COLOURS,
@@ -185,7 +186,7 @@ export default function EvaluationScreen() {
     return (
       <Screen>
         <Muted>IHS scoring is different for males and females. Set the sex of this fish before scoring it.</Muted>
-        <Button title="Edit fish" onPress={() => router.replace({ pathname: '/fish/[id]/edit', params: { id } })} />
+        <Button title="Edit fish" icon={Icons.edit} onPress={() => router.replace({ pathname: '/fish/[id]/edit', params: { id } })} />
       </Screen>
     );
   }
@@ -381,10 +382,10 @@ export default function EvaluationScreen() {
       {shownPhoto ? <Image source={{ uri: shownPhoto }} style={styles.photo} contentFit="cover" /> : null}
       <View style={styles.buttons}>
         <View style={{ flex: 1 }}>
-          <Button title="Take photo" variant="secondary" small onPress={() => addPhoto('camera')} />
+          <Button title="Take photo" icon={Icons.camera} variant="secondary" small onPress={() => addPhoto('camera')} />
         </View>
         <View style={{ flex: 1 }}>
-          <Button title="Choose photo" variant="secondary" small onPress={() => addPhoto('library')} />
+          <Button title="Choose photo" icon={Icons.library} variant="secondary" small onPress={() => addPhoto('library')} />
         </View>
       </View>
       <Field label="Notes" value={notes} onChangeText={setNotes} multiline />
