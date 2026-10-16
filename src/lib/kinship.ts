@@ -19,3 +19,63 @@ export function closeRelations(members: Fish[]): string[] {
   }
   return notes;
 }
+
+// Wright's inbreeding coefficient from the recorded sires and dams.
+// inbreeding(fish) is the chance that both copies of a gene came from the same ancestor:
+// 25% for a full-sibling or parent-offspring cross, 12.5% for half siblings, 6.25% for first cousins.
+// Only recorded ancestors count, so a fish with unknown grandparents may be more inbred than shown.
+export function makeKinship(fish: Fish[]) {
+  const byId = new Map(fish.map((f) => [f.id, f]));
+  const depthMemo = new Map<string, number>();
+  const kinMemo = new Map<string, number>();
+  const inbreedingMemo = new Map<string, number>();
+
+  // How many recorded generations sit above a fish. An ancestor always has a smaller depth.
+  function depth(id: string, seen = new Set<string>()): number {
+    const memo = depthMemo.get(id);
+    if (memo !== undefined) return memo;
+    const f = byId.get(id);
+    if (!f || seen.has(id)) return 0; // unknown fish, or a loop in bad data
+    seen.add(id);
+    const d = 1 + Math.max(f.sire_id ? depth(f.sire_id, seen) : -1, f.dam_id ? depth(f.dam_id, seen) : -1);
+    seen.delete(id);
+    depthMemo.set(id, d);
+    return d;
+  }
+
+  function kinship(a: string | null, b: string | null, guard = 0): number {
+    if (!a || !b || !byId.has(a) || !byId.has(b) || guard > 200) return 0;
+    if (a === b) return 0.5 * (1 + inbreeding(a, guard + 1));
+    // Recurse on the fish further down the tree, which can't be an ancestor of the other.
+    if (depth(a) < depth(b)) [a, b] = [b, a];
+    const key = a < b ? `${a}|${b}` : `${b}|${a}`;
+    const memo = kinMemo.get(key);
+    if (memo !== undefined) return memo;
+    const f = byId.get(a)!;
+    const k = 0.5 * (kinship(f.sire_id, b, guard + 1) + kinship(f.dam_id, b, guard + 1));
+    kinMemo.set(key, k);
+    return k;
+  }
+
+  function inbreeding(id: string, guard = 0): number {
+    const memo = inbreedingMemo.get(id);
+    if (memo !== undefined) return memo;
+    const f = byId.get(id);
+    const value = f ? kinship(f.sire_id, f.dam_id, guard + 1) : 0;
+    inbreedingMemo.set(id, value);
+    return value;
+  }
+
+  return {
+    inbreeding: (id: string) => inbreeding(id),
+    // The inbreeding of fry from this pair.
+    offspringInbreeding: (sireId: string, damId: string) => kinship(sireId, damId),
+    // Recorded generations behind a fish, to say how far back the figure reaches.
+    generationsKnown: (id: string) => depth(id),
+  };
+}
+
+export function formatInbreeding(value: number): string {
+  const pct = value * 100;
+  return `${parseFloat(pct.toFixed(pct < 10 ? 2 : 1))}%`;
+}
