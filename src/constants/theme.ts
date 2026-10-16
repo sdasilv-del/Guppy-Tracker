@@ -17,6 +17,7 @@ export const Colors = {
     accent: '#156EBD',
     onAccent: '#ffffff',
     danger: '#C62828',
+    success: '#2E7D32',
     // Field and chip outlines meet the 3:1 contrast minimum for controls; divider is for thin lines between rows.
     border: '#80838D',
     divider: '#D9DADF',
@@ -30,6 +31,7 @@ export const Colors = {
     accent: '#4FA8F0',
     onAccent: '#001A33',
     danger: '#EF6B6B',
+    success: '#5CC779',
     border: '#6F737A',
     divider: '#3A3D42',
   },

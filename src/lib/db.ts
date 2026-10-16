@@ -445,6 +445,11 @@ export async function listEvaluations(fishId: string): Promise<Evaluation[]> {
   );
 }
 
+// Every evaluation's score, for strain and generation stats.
+export async function listEvaluationScores(): Promise<Pick<Evaluation, 'fish_id' | 'sex' | 'total' | 'kind'>[]> {
+  return must(await supabase.from('evaluations').select('fish_id, sex, total, kind'));
+}
+
 export async function getEvaluation(id: string): Promise<Evaluation | null> {
   return must(await supabase.from('evaluations').select('*').eq('id', id).maybeSingle());
 }

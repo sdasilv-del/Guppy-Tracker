@@ -33,6 +33,7 @@ export default function AppLayout() {
       <Stack.Screen name="groups/new" options={{ title: 'New breeding group' }} />
       <Stack.Screen name="groups/[id]/index" options={{ title: 'Breeding group' }} />
       <Stack.Screen name="groups/[id]/edit" options={{ title: 'Edit group' }} />
+      <Stack.Screen name="strains/[name]" options={{ title: 'Strain' }} />
       <Stack.Screen name="spawns/index" options={{ title: 'Spawns' }} />
       <Stack.Screen name="spawns/new" options={{ title: 'New spawn' }} />
       <Stack.Screen name="spawns/[id]/index" options={{ title: 'Spawn' }} />
