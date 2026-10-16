@@ -11,6 +11,7 @@ export const Icons = {
   spawn: { ios: 'sparkles', android: 'auto_awesome' },
   waterTest: { ios: 'testtube.2', android: 'science' },
   waterChange: { ios: 'arrow.triangle.2.circlepath', android: 'autorenew' },
+  filter: { ios: 'line.3.horizontal.decrease.circle', android: 'filter_list' },
   trait: { ios: 'star', android: 'star' },
   evaluation: { ios: 'rosette', android: 'military_tech' },
   pedigree: { ios: 'point.3.connected.trianglepath.dotted', android: 'account_tree' },
