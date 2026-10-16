@@ -7,6 +7,7 @@ import { Spacing } from '@/constants/theme';
 import { groupMembers, listFish, listGroups, listSpawnEvents, listSpawns } from '@/lib/db';
 import { formatAge, formatDate } from '@/lib/format';
 import { summarizeBatch } from '@/lib/spawn';
+import { listStrains } from '@/lib/strains';
 import { useFocusData } from '@/lib/use-data';
 
 // Breeding tab: the groups that are breeding now and the fry batches still growing out.
@@ -29,6 +30,7 @@ export default function BreedingScreen() {
   const growing = (data?.spawns ?? [])
     .map((s) => ({ spawn: s, batch: summarizeBatch(s, data!.events, data!.fish) }))
     .filter((x) => x.batch.remaining > 0);
+  const strains = listStrains(data?.fish ?? []);
   const code = (id: string | null) => (id ? fishById[id]?.fish_code ?? '?' : 'Unknown');
 
   return (
@@ -76,6 +78,21 @@ export default function BreedingScreen() {
           <Button title="Record a spawn" icon={Icons.spawn} small onPress={() => router.push('/spawns/new')} />
           <Button title="All spawns" small variant="secondary" onPress={() => router.push('/spawns')} />
         </View>
+      </Section>
+
+      <Section title={`Strains (${strains.length})`}>
+        {strains.length === 0 ? (
+          <Empty>No strains yet. Give your fish a strain name to see how each line does generation by generation.</Empty>
+        ) : null}
+        {strains.map((st) => (
+          <ListRow
+            key={st.name}
+            icon={Icons.strain}
+            title={st.name}
+            subtitle={`${st.generations.join(', ')} · ${st.active} of ${st.fish} fish in the fish room`}
+            onPress={() => router.push({ pathname: '/strains/[name]', params: { name: st.name } })}
+          />
+        ))}
       </Section>
     </Screen>
   );
