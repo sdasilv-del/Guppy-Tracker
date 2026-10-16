@@ -1,11 +1,15 @@
 import { router, Stack, useLocalSearchParams } from 'expo-router';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { Card, ErrorText, Loading, Muted, Screen } from '@/components/ui';
+import { Button, Card, ErrorText, Loading, Muted, Screen } from '@/components/ui';
+import { Icons } from '@/constants/icons';
 import { Spacing } from '@/constants/theme';
 import { labelOf, TAIL_STANDARDS } from '@/lib/constants';
+import { useAuth } from '@/lib/auth';
 import { listFish } from '@/lib/db';
+import { certificateHtml } from '@/lib/export';
 import { pedigreeColumns, repeatedAncestors } from '@/lib/pedigree';
+import { printHtml } from '@/lib/share';
 import type { Fish } from '@/lib/types';
 import { useFocusData } from '@/lib/use-data';
 import { useTheme } from '@/hooks/use-theme';
@@ -43,6 +47,7 @@ function Box({ fish, role, highlight }: { fish: Fish | null; role: string; highl
 export default function PedigreeScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const theme = useTheme();
+  const { profile } = useAuth();
   const { data, error } = useFocusData(listFish);
 
   if (!data && !error) return <Loading />;
@@ -85,6 +90,18 @@ export default function PedigreeScreen() {
           </View>
         ))}
       </ScrollView>
+
+      <Button
+        title="Print pedigree certificate"
+        icon={Icons.print}
+        variant="secondary"
+        onPress={() =>
+          printHtml(certificateHtml(fish, data ?? [], profile)).catch((e) =>
+            Alert.alert("Couldn't print", e instanceof Error ? e.message : String(e)),
+          )
+        }
+      />
+      <Muted>A one-page certificate with three generations, to give a buyer or save as a PDF.</Muted>
     </Screen>
   );
 }
