@@ -82,8 +82,9 @@ export default function HomeScreen() {
 
 const styles = StyleSheet.create({
   header: { gap: Spacing.one },
-  stats: { flexDirection: 'row', gap: Spacing.two },
-  statWrap: { flex: 1 },
+  stats: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
+  // Two counts per row, so labels like "For sale" never squeeze or wrap.
+  statWrap: { flexBasis: '47%', flexGrow: 1 },
   stat: { alignItems: 'center', gap: 0 },
   statNumber: { fontSize: 28, lineHeight: 34, fontWeight: '700' },
 });
