@@ -1,7 +1,7 @@
 import { Image } from 'expo-image';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 
 import { pickPhoto } from '@/components/fish-form';
 import { fishLabel } from '@/components/fish-picker';
@@ -18,6 +18,7 @@ import {
   Screen,
   Section,
 } from '@/components/ui';
+import { Icons } from '@/constants/icons';
 import { Spacing } from '@/constants/theme';
 import {
   BASE_COLOURS,
@@ -54,6 +55,8 @@ import { useFocusData } from '@/lib/use-data';
 
 export default function FishScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const { width } = useWindowDimensions();
+  const photoWidth = width - Spacing.three * 2;
   const { session } = useAuth();
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -136,11 +139,22 @@ export default function FishScreen() {
       <Stack.Screen options={{ title: fish.fish_code }} />
 
       {data.photos.length > 0 ? (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.photos}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          // Full-width photos that snap one at a time, like the Photos app.
+          snapToInterval={photoWidth + Spacing.two}
+          decelerationRate="fast"
+          contentContainerStyle={styles.photos}>
           {data.photos.map((p) =>
             data.urls[p.storage_path] ? (
               <Pressable key={p.id} onLongPress={() => confirmDeletePhoto(p)}>
-                <Image source={{ uri: data.urls[p.storage_path] }} style={styles.photo} contentFit="cover" />
+                <Image
+                  source={{ uri: data.urls[p.storage_path] }}
+                  style={[styles.photo, { width: photoWidth, height: photoWidth * 0.75 }]}
+                  contentFit="cover"
+                  transition={150}
+                />
                 <Muted>{formatDate(p.taken_on)}</Muted>
               </Pressable>
             ) : null,
@@ -149,10 +163,10 @@ export default function FishScreen() {
       ) : null}
       <View style={styles.buttons}>
         <View style={styles.half}>
-          <Button title="Take photo" variant="secondary" small onPress={() => addPhoto('camera')} disabled={busy} />
+          <Button title="Take photo" icon={Icons.camera} variant="secondary" small onPress={() => addPhoto('camera')} disabled={busy} />
         </View>
         <View style={styles.half}>
-          <Button title="Add from library" variant="secondary" small onPress={() => addPhoto('library')} disabled={busy} />
+          <Button title="Add from library" icon={Icons.library} variant="secondary" small onPress={() => addPhoto('library')} disabled={busy} />
         </View>
       </View>
       {data.photos.length > 1 ? <Muted>Press and hold a photo to delete it.</Muted> : null}
@@ -197,12 +211,13 @@ export default function FishScreen() {
         <View style={styles.half}>
           <Button
             title="Edit"
+            icon={Icons.edit}
             variant="secondary"
             onPress={() => router.push({ pathname: '/fish/[id]/edit', params: { id } })}
           />
         </View>
         <View style={styles.half}>
-          <Button title="Move" onPress={() => router.push({ pathname: '/fish/[id]/move', params: { id } })} />
+          <Button title="Move" icon={Icons.move} onPress={() => router.push({ pathname: '/fish/[id]/move', params: { id } })} />
         </View>
       </View>
       {fish.status === 'for_sale' ? (
@@ -226,6 +241,7 @@ export default function FishScreen() {
         {data.traitRecords.length === 0 ? <Empty>No traits recorded yet.</Empty> : null}
         {data.traitRecords.map((t) => (
           <ListRow
+            icon={Icons.trait}
             key={t.id}
             title={`${data.traitNames[t.trait_id] ?? 'Trait'} · ${formatDate(t.recorded_on)}`}
             subtitle={[t.value, t.score !== null ? `Score ${t.score}` : null, t.notes].filter(Boolean).join(' · ')}
@@ -246,6 +262,7 @@ export default function FishScreen() {
         {data.evaluations.length === 0 ? <Empty>No evaluations yet.</Empty> : null}
         {data.evaluations.map((e) => (
           <ListRow
+            icon={Icons.evaluation}
             key={e.id}
             title={`${e.total} / ${ihsMaxTotal(e.sex)} · ${formatDate(e.evaluated_on)}`}
             subtitle={[
@@ -272,12 +289,12 @@ export default function FishScreen() {
           />
         }>
         {sire ? (
-          <ListRow title={`Sire · ${sire.fish_code}`} subtitle={fishLabel(sire)} onPress={() => openFish(sire.id)} />
+          <ListRow icon={Icons.fish} title={`Sire · ${sire.fish_code}`} subtitle={fishLabel(sire)} onPress={() => openFish(sire.id)} />
         ) : (
           <ListRow title="Sire · Unknown" />
         )}
         {dam ? (
-          <ListRow title={`Dam · ${dam.fish_code}`} subtitle={fishLabel(dam)} onPress={() => openFish(dam.id)} />
+          <ListRow icon={Icons.fish} title={`Dam · ${dam.fish_code}`} subtitle={fishLabel(dam)} onPress={() => openFish(dam.id)} />
         ) : (
           <ListRow title="Dam · Unknown" />
         )}
@@ -287,6 +304,7 @@ export default function FishScreen() {
         <Section title="Breeding groups">
           {data.groups.map((g) => (
             <ListRow
+            icon={Icons.group}
               key={g.id}
               title={g.name ? `${g.group_code} · ${g.name}` : g.group_code}
               subtitle={[g.goal, g.ended_on ? `Ended ${formatDate(g.ended_on)}` : 'Active'].filter(Boolean).join(' · ')}
@@ -300,6 +318,7 @@ export default function FishScreen() {
         <Section title={`Spawns as a parent (${parentOf.length})`}>
           {parentOf.map((s) => (
             <ListRow
+              icon={Icons.spawn}
               key={s.id}
               title={`${s.spawn_code} · born ${formatDate(s.born_on)}`}
               subtitle={`${s.fry_count} fry at birth`}
@@ -313,6 +332,7 @@ export default function FishScreen() {
         {offspring.length === 0 ? <Empty>No recorded offspring yet.</Empty> : null}
         {offspring.map((f) => (
           <ListRow
+            icon={Icons.fish}
             key={f.id}
             title={f.fish_code}
             subtitle={[f.name, f.strain, labelOf(FISH_STATUSES, f.status)].filter(Boolean).join(' · ')}
@@ -325,6 +345,7 @@ export default function FishScreen() {
         {data.moves.length === 0 ? <Empty>No moves recorded.</Empty> : null}
         {data.moves.map((m) => (
           <ListRow
+            icon={Icons.move}
             key={m.id}
             title={formatDate(m.moved_at)}
             subtitle={`${m.from_tank_id ? data.tankNames[m.from_tank_id] ?? 'Deleted tank' : 'No tank'} → ${
@@ -339,7 +360,7 @@ export default function FishScreen() {
 
 const styles = StyleSheet.create({
   photos: { gap: Spacing.two },
-  photo: { width: 260, height: 195, borderRadius: 12 },
+  photo: { borderRadius: 14 },
   buttons: { flexDirection: 'row', gap: Spacing.two },
   half: { flex: 1 },
   link: { textDecorationLine: 'underline', fontWeight: '500' },

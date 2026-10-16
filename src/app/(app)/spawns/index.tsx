@@ -1,6 +1,7 @@
 import { router } from 'expo-router';
 
 import { Button, Empty, ErrorText, ListRow, Loading, Muted, Screen, Section } from '@/components/ui';
+import { Icons } from '@/constants/icons';
 import { listFish, listSpawnEvents, listSpawns } from '@/lib/db';
 import { formatAge, formatDate } from '@/lib/format';
 import { summarizeBatch } from '@/lib/spawn';
@@ -25,6 +26,7 @@ export default function SpawnsScreen() {
 
   const row = ({ spawn: s, batch }: { spawn: Spawn; batch: ReturnType<typeof summarizeBatch> }) => (
     <ListRow
+            icon={Icons.spawn}
       key={s.id}
       title={`${s.spawn_code} · ${s.sire_id ? codes[s.sire_id] ?? '?' : 'Unknown'} × ${
         s.dam_id ? codes[s.dam_id] ?? '?' : 'Unknown'
@@ -38,7 +40,7 @@ export default function SpawnsScreen() {
 
   return (
     <Screen>
-      <Button title="Record a spawn" onPress={() => router.push('/spawns/new')} />
+      <Button title="Record a spawn" icon={Icons.spawn} onPress={() => router.push('/spawns/new')} />
       <ErrorText message={error} />
       <Section title={`Growing out (${growing.length})`}>
         {growing.length === 0 ? <Empty>No fry batches growing out. Record a spawn from a breeding group.</Empty> : null}

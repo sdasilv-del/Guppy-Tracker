@@ -4,6 +4,7 @@ import { StyleSheet, View } from 'react-native';
 
 import { tankLabel } from '@/components/group-form';
 import { Body, Button, Card, Empty, ErrorText, InfoRow, ListRow, Loading, Muted, Screen, Section } from '@/components/ui';
+import { Icons } from '@/constants/icons';
 import { Spacing } from '@/constants/theme';
 import { FISH_STATUSES, labelOf, SEXES } from '@/lib/constants';
 import {
@@ -115,6 +116,7 @@ export default function GroupScreen() {
         <View style={styles.half}>
           <Button
             title="Edit"
+            icon={Icons.edit}
             variant="secondary"
             small
             onPress={() => router.push({ pathname: '/groups/[id]/edit', params: { id } })}
@@ -141,6 +143,7 @@ export default function GroupScreen() {
         {members.length === 0 ? <Empty>No fish in this group.</Empty> : null}
         {members.map((f) => (
           <ListRow
+            icon={Icons.fish}
             key={f.id}
             title={`${f.fish_code} · ${labelOf(SEXES, f.sex)}`}
             subtitle={[
@@ -171,6 +174,7 @@ export default function GroupScreen() {
           const batch = summarizeBatch(s, data.events, data.fish);
           return (
             <ListRow
+            icon={Icons.spawn}
               key={s.id}
               title={`${s.spawn_code} · born ${formatDate(s.born_on)}`}
               subtitle={`${s.fry_count} fry at birth · ${batch.remaining} now · ${batch.picked} picked · Dam ${code(s.dam_id)}`}

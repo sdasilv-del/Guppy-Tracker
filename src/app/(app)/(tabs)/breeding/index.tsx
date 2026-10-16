@@ -2,6 +2,7 @@ import { router } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
 
 import { Button, Empty, ListRow, LoadError, Loading, Screen, Section } from '@/components/ui';
+import { Icons } from '@/constants/icons';
 import { Spacing } from '@/constants/theme';
 import { groupMembers, listFish, listGroups, listSpawnEvents, listSpawns } from '@/lib/db';
 import { formatAge, formatDate } from '@/lib/format';
@@ -44,6 +45,7 @@ export default function BreedingScreen() {
           const females = members.filter((f) => f.sex === 'F').length;
           return (
             <ListRow
+            icon={Icons.group}
               key={g.id}
               title={g.name ? `${g.group_code} · ${g.name}` : g.group_code}
               subtitle={[`${males}M ${females}F`, g.goal, `Since ${formatDate(g.started_on)}`].filter(Boolean).join(' · ')}
@@ -52,7 +54,7 @@ export default function BreedingScreen() {
           );
         })}
         <View style={styles.actions}>
-          <Button title="Start a group" small onPress={() => router.push('/groups/new')} />
+          <Button title="Start a group" icon={Icons.group} small onPress={() => router.push('/groups/new')} />
           <Button title="All groups" small variant="secondary" onPress={() => router.push('/groups')} />
         </View>
       </Section>
@@ -61,6 +63,7 @@ export default function BreedingScreen() {
         {growing.length === 0 ? <Empty>No fry batches growing out. Record a spawn from a breeding group.</Empty> : null}
         {growing.map(({ spawn: s, batch }) => (
           <ListRow
+            icon={Icons.spawn}
             key={s.id}
             title={`${s.spawn_code} · ${code(s.sire_id)} × ${code(s.dam_id)}`}
             subtitle={`Born ${formatDate(s.born_on)} (${formatAge(s.born_on) || 'new'}) · ${batch.remaining} of ${
@@ -70,7 +73,7 @@ export default function BreedingScreen() {
           />
         ))}
         <View style={styles.actions}>
-          <Button title="Record a spawn" small onPress={() => router.push('/spawns/new')} />
+          <Button title="Record a spawn" icon={Icons.spawn} small onPress={() => router.push('/spawns/new')} />
           <Button title="All spawns" small variant="secondary" onPress={() => router.push('/spawns')} />
         </View>
       </Section>

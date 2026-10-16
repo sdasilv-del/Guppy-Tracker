@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Button, ChipSelect, Empty, ErrorText, Field, Loading, Screen } from '@/components/ui';
+import { Icons } from '@/constants/icons';
 import { Spacing } from '@/constants/theme';
 import { FISH_STATUSES, INACTIVE_STATUSES, labelOf, SEXES } from '@/lib/constants';
 import { latestPhotoPaths, listFish, listTanks, signedPhotoUrls } from '@/lib/db';
@@ -47,7 +48,7 @@ export default function FishListScreen() {
 
   return (
     <Screen>
-      <Button title="Add a fish" onPress={() => router.push('/fish/new')} />
+      <Button title="Add a fish" icon={Icons.add} onPress={() => router.push('/fish/new')} />
       <ErrorText message={error} />
       <Field label="Search" value={query} onChangeText={setQuery} placeholder="ID, name or strain" autoCapitalize="none" />
       <ChipSelect label="Show" options={FILTERS} value={filter} onChange={(v) => v && setFilter(v)} />

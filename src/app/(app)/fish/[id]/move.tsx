@@ -2,6 +2,7 @@ import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 
 import { Button, ErrorText, ListRow, Loading, Muted, Screen } from '@/components/ui';
+import { Icons } from '@/constants/icons';
 import { labelOf, TANK_PURPOSES } from '@/lib/constants';
 import { getFish, listTanks, moveFish } from '@/lib/db';
 import { useFocusData } from '@/lib/use-data';
@@ -40,6 +41,7 @@ export default function MoveFishScreen() {
         .filter((t) => t.id !== fish.tank_id)
         .map((t) => (
           <ListRow
+            icon={Icons.tank}
             key={t.id}
             title={t.name ? `${t.tank_code} · ${t.name}` : t.tank_code}
             subtitle={labelOf(TANK_PURPOSES, t.purpose)}

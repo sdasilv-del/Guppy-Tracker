@@ -1,0 +1,24 @@
+import type { SymbolViewProps } from 'expo-symbols';
+
+export type IconName = SymbolViewProps['name'];
+
+// One icon per kind of thing, so the same symbol means the same thing on every screen.
+// iOS uses SF Symbols; Android uses Material Symbols.
+export const Icons = {
+  tank: { ios: 'square.grid.2x2', android: 'grid_view' },
+  fish: { ios: 'fish', android: 'set_meal' },
+  group: { ios: 'heart', android: 'favorite' },
+  spawn: { ios: 'sparkles', android: 'auto_awesome' },
+  waterTest: { ios: 'testtube.2', android: 'science' },
+  waterChange: { ios: 'arrow.triangle.2.circlepath', android: 'autorenew' },
+  trait: { ios: 'star', android: 'star' },
+  evaluation: { ios: 'rosette', android: 'military_tech' },
+  pedigree: { ios: 'point.3.connected.trianglepath.dotted', android: 'account_tree' },
+  move: { ios: 'arrow.left.arrow.right', android: 'swap_horiz' },
+  qr: { ios: 'qrcode', android: 'qr_code' },
+  edit: { ios: 'pencil', android: 'edit' },
+  add: { ios: 'plus', android: 'add' },
+  camera: { ios: 'camera', android: 'photo_camera' },
+  library: { ios: 'photo.on.rectangle', android: 'photo_library' },
+  chevron: { ios: 'chevron.right', android: 'chevron_right' },
+} satisfies Record<string, IconName>;

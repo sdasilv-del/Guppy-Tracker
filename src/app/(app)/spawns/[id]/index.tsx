@@ -3,6 +3,7 @@ import { StyleSheet, View } from 'react-native';
 
 import { tankLabel } from '@/components/group-form';
 import { Body, Button, Card, Empty, ErrorText, InfoRow, ListRow, Loading, Muted, Screen, Section } from '@/components/ui';
+import { Icons } from '@/constants/icons';
 import { Spacing } from '@/constants/theme';
 import { FISH_STATUSES, labelOf, SEXES, SPAWN_EVENT_KINDS, type SpawnEventKind } from '@/lib/constants';
 import { getGroup, getSpawn, listFish, listPicks, listSpawnEvents, listTanks } from '@/lib/db';
@@ -114,6 +115,7 @@ export default function SpawnScreen() {
         {data.picks.length === 0 ? <Empty>No fish picked yet. Picked fry become fish with their own ID.</Empty> : null}
         {data.picks.map((f) => (
           <ListRow
+            icon={Icons.fish}
             key={f.id}
             title={`${f.fish_code} · ${labelOf(SEXES, f.sex)}`}
             subtitle={[f.pick_reason, labelOf(FISH_STATUSES, f.status)].filter(Boolean).join(' · ')}

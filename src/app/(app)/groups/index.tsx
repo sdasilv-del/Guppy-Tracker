@@ -1,6 +1,7 @@
 import { router } from 'expo-router';
 
 import { Button, Empty, ErrorText, ListRow, Loading, Muted, Screen, Section } from '@/components/ui';
+import { Icons } from '@/constants/icons';
 import { groupMembers, listFish, listGroups } from '@/lib/db';
 import { formatDate } from '@/lib/format';
 import type { BreedingGroup, Fish } from '@/lib/types';
@@ -32,6 +33,7 @@ export default function GroupsScreen() {
     const members = (data?.members[g.id] ?? []).map((id) => data!.fishById[id]).filter(Boolean);
     return (
       <ListRow
+            icon={Icons.group}
         key={g.id}
         title={g.name ? `${g.group_code} · ${g.name}` : g.group_code}
         subtitle={groupSubtitle(g, members)}
@@ -42,7 +44,7 @@ export default function GroupsScreen() {
 
   return (
     <Screen>
-      <Button title="Start a breeding group" onPress={() => router.push('/groups/new')} />
+      <Button title="Start a breeding group" icon={Icons.group} onPress={() => router.push('/groups/new')} />
       <ErrorText message={error} />
       <Section title={`Active (${active.length})`}>
         {active.length === 0 ? (

@@ -2,7 +2,8 @@ import { type Href, router, Stack } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
 import { Pressable, StyleSheet, View } from 'react-native';
 
-import { Body, Card, Heading, LoadError, Muted, Screen } from '@/components/ui';
+import { Body, Card, Heading, Icon, LoadError, Muted, Screen } from '@/components/ui';
+import { type IconName, Icons } from '@/constants/icons';
 import { Spacing } from '@/constants/theme';
 import { INACTIVE_STATUSES } from '@/lib/constants';
 import { useAuth } from '@/lib/auth';
@@ -11,7 +12,7 @@ import { summarizeBatch } from '@/lib/spawn';
 import { useFocusData } from '@/lib/use-data';
 import { useTheme } from '@/hooks/use-theme';
 
-function Stat({ value, label, href }: { value: number | undefined; label: string; href: Href }) {
+function Stat({ value, label, href, icon }: { value: number | undefined; label: string; href: Href; icon: IconName }) {
   return (
     <Pressable
       accessibilityRole="button"
@@ -19,6 +20,7 @@ function Stat({ value, label, href }: { value: number | undefined; label: string
       onPress={() => router.navigate(href)}
       style={({ pressed }) => [styles.statWrap, { opacity: pressed ? 0.75 : 1 }]}>
       <Card style={styles.stat}>
+        <Icon name={icon} size={22} />
         <Body style={styles.statNumber}>{value ?? '–'}</Body>
         <Muted>{label}</Muted>
       </Card>
@@ -71,10 +73,10 @@ export default function HomeScreen() {
       {error ? <LoadError message={`Couldn't load your counts. ${error}`} onRetry={reload} /> : null}
 
       <View style={styles.stats}>
-        <Stat value={data?.tanks} label="Tanks" href="/tanks" />
-        <Stat value={data?.fish} label="Fish" href="/fish" />
-        <Stat value={data?.fry} label="Fry" href="/breeding" />
-        <Stat value={data?.forSale} label="For sale" href="/fish" />
+        <Stat value={data?.tanks} label="Tanks" href="/tanks" icon={Icons.tank} />
+        <Stat value={data?.fish} label="Fish" href="/fish" icon={Icons.fish} />
+        <Stat value={data?.fry} label="Fry" href="/breeding" icon={Icons.spawn} />
+        <Stat value={data?.forSale} label="For sale" href="/fish" icon={{ ios: 'tag', android: 'sell' }} />
       </View>
     </Screen>
   );
