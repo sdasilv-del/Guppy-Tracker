@@ -15,6 +15,7 @@ export type Tank = {
   size_gallons: number | null;
   purpose: TankPurpose;
   notes: string | null;
+  water_change_every_days: number | null;
   created_at: string;
 };
 

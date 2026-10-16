@@ -34,7 +34,7 @@ export async function getTank(id: string): Promise<Tank | null> {
   return must(await supabase.from('tanks').select('*').eq('id', id).maybeSingle());
 }
 
-export type TankInput = Pick<Tank, 'name' | 'size_gallons' | 'purpose' | 'notes'>;
+export type TankInput = Pick<Tank, 'name' | 'size_gallons' | 'purpose' | 'notes' | 'water_change_every_days'>;
 
 export async function createTank(input: TankInput): Promise<Tank> {
   return must(await supabase.from('tanks').insert(input).select().single());
@@ -99,6 +99,16 @@ export async function listWaterChanges(tankId: string): Promise<WaterChange[]> {
       .order('changed_on', { ascending: false })
       .order('created_at', { ascending: false }),
   );
+}
+
+// The most recent water change date for each tank, for reminders.
+export async function lastWaterChangeByTank(): Promise<Record<string, string>> {
+  const rows = must(
+    await supabase.from('water_changes').select('tank_id, changed_on').order('changed_on', { ascending: false }),
+  ) as Pick<WaterChange, 'tank_id' | 'changed_on'>[];
+  const out: Record<string, string> = {};
+  for (const r of rows) if (!out[r.tank_id]) out[r.tank_id] = r.changed_on;
+  return out;
 }
 
 export async function getWaterChange(id: string): Promise<WaterChange | null> {
