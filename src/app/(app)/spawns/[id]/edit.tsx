@@ -33,7 +33,7 @@ export default function EditSpawnScreen() {
         {
           text: 'Delete',
           style: 'destructive',
-          onPress: () => attempt(() => deleteSpawn(id), () => router.dismissTo('/spawns')),
+          onPress: () => attempt(() => deleteSpawn(id), () => router.dismissTo('/breeding')),
         },
       ],
     );

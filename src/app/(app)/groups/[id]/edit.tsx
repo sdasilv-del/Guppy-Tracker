@@ -46,7 +46,7 @@ export default function EditGroupScreen() {
         {
           text: 'Delete',
           style: 'destructive',
-          onPress: () => attempt(() => deleteGroup(id), () => router.dismissTo('/groups')),
+          onPress: () => attempt(() => deleteGroup(id), () => router.dismissTo('/breeding')),
         },
       ],
     );
