@@ -28,6 +28,7 @@ import {
 import { blankToNull, numberText, parseNumber, todayISO } from '@/lib/format';
 import { summarizeBatch } from '@/lib/spawn';
 import type { Tank } from '@/lib/types';
+import { attempt } from '@/lib/alerts';
 
 const TITLES: Record<SpawnEventKind, string> = {
   move: 'Move fry',
@@ -138,10 +139,7 @@ export default function SpawnEventScreen() {
       {
         text: 'Delete',
         style: 'destructive',
-        onPress: async () => {
-          await deleteSpawnEvent(eventId!);
-          router.back();
-        },
+        onPress: () => attempt(() => deleteSpawnEvent(eventId!), () => router.back()),
       },
     ]);
   }

@@ -65,6 +65,11 @@ function Criterion({
         />
         <Text style={[styles.max, { color: theme.textSecondary }]}>/ {category.max}</Text>
       </View>
+      {bad ? (
+        <Text accessibilityLiveRegion="polite" style={[styles.guide, { color: theme.danger }]}>
+          Enter a number from 0 to {category.max}.
+        </Text>
+      ) : null}
       <Text style={[styles.guide, { color: theme.textSecondary }]}>{category.guide}</Text>
       {category.note ? <Text style={[styles.guide, { color: theme.textSecondary }]}>{category.note}</Text> : null}
       <Text style={[styles.guide, { color: theme.textSecondary }]}>

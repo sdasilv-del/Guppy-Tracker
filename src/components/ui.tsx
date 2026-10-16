@@ -1,6 +1,7 @@
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { type ReactNode, useState } from 'react';
+import { type ReactNode, useEffect, useState } from 'react';
 import {
+  AccessibilityInfo,
   ActivityIndicator,
   Platform,
   Pressable,
@@ -27,7 +28,10 @@ export function Screen({ children, scroll = true }: { children: ReactNode; scrol
     <ScrollView
       style={{ backgroundColor: theme.background }}
       contentContainerStyle={styles.screen}
-      keyboardShouldPersistTaps="handled">
+      keyboardShouldPersistTaps="handled"
+      // Keeps the focused field above the keyboard; dragging the page down puts the keyboard away.
+      automaticallyAdjustKeyboardInsets
+      keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}>
       {children}
     </ScrollView>
   );
@@ -110,6 +114,8 @@ export function Button({
   return (
     <Pressable
       accessibilityRole="button"
+      accessibilityLabel={title}
+      accessibilityState={{ disabled: !!(disabled || busy), busy: !!busy }}
       onPress={onPress}
       disabled={disabled || busy}
       style={({ pressed }) => [
@@ -138,6 +144,8 @@ export function Field({
       <Text style={[styles.label, { color: theme.textSecondary }]}>{label}</Text>
       <TextInput
         placeholderTextColor={theme.textSecondary}
+        accessibilityLabel={label}
+        accessibilityHint={hint}
         {...input}
         style={[
           styles.input,
@@ -163,6 +171,7 @@ function Chip({ label, selected, onPress }: { label: string; selected: boolean; 
       accessibilityRole="button"
       accessibilityState={{ selected }}
       onPress={onPress}
+      hitSlop={{ top: 4, bottom: 4 }}
       style={[
         styles.chip,
         {
@@ -253,7 +262,7 @@ export function ToggleField({
   return (
     <View style={[styles.field, styles.toggleRow]}>
       <Text style={[styles.body, { color: theme.text }]}>{label}</Text>
-      <Switch value={value} onValueChange={onChange} trackColor={{ true: theme.accent }} />
+      <Switch value={value} onValueChange={onChange} trackColor={{ true: theme.accent }} accessibilityLabel={label} />
     </View>
   );
 }
@@ -280,6 +289,8 @@ export function DateField({
       <View style={styles.dateRow}>
         <Pressable
           accessibilityRole="button"
+          accessibilityLabel={`${label}, ${value ? formatDate(value) : 'not set'}`}
+          accessibilityHint="Opens a date picker"
           onPress={() => setOpen(true)}
           style={[styles.input, styles.dateButton, { borderColor: theme.border }]}>
           <Text style={{ color: value ? theme.text : theme.textSecondary, fontSize: 16 }}>
@@ -314,7 +325,7 @@ export function InfoRow({ label, value }: { label: string; value: ReactNode }) {
   const theme = useTheme();
   if (value === null || value === undefined || value === '') return null;
   return (
-    <View style={[styles.infoRow, { borderBottomColor: theme.border }]}>
+    <View style={[styles.infoRow, { borderBottomColor: theme.divider }]}>
       <Text style={[styles.infoLabel, { color: theme.textSecondary }]}>{label}</Text>
       {typeof value === 'string' || typeof value === 'number' ? (
         <Text style={[styles.infoValue, { color: theme.text }]}>{value}</Text>
@@ -339,6 +350,7 @@ export function ListRow({
   const theme = useTheme();
   return (
     <Pressable
+      accessibilityRole={onPress ? 'button' : undefined}
       onPress={onPress}
       disabled={!onPress}
       style={({ pressed }) => [
@@ -365,8 +377,26 @@ export function Loading() {
 
 export function ErrorText({ message }: { message: string | null }) {
   const theme = useTheme();
+  // Screen readers say the error out loud as soon as it appears.
+  useEffect(() => {
+    if (message) AccessibilityInfo.announceForAccessibility(message);
+  }, [message]);
   if (!message) return null;
-  return <Text style={[styles.body, { color: theme.danger }]}>{message}</Text>;
+  return (
+    <Text accessibilityRole="alert" accessibilityLiveRegion="polite" style={[styles.body, { color: theme.danger }]}>
+      {message}
+    </Text>
+  );
+}
+
+// A load that failed, with a way to try again instead of a spinner or blank screen.
+export function LoadError({ message, onRetry }: { message: string; onRetry: () => void }) {
+  return (
+    <Card>
+      <ErrorText message={message} />
+      <Button title="Try again" variant="secondary" onPress={onRetry} />
+    </Card>
+  );
 }
 
 export function Empty({ children }: { children: ReactNode }) {
@@ -393,7 +423,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: Spacing.three,
   },
-  buttonSmall: { minHeight: 36, paddingHorizontal: Spacing.two + 4 },
+  buttonSmall: { minHeight: 44, paddingHorizontal: Spacing.two + 4 },
   buttonText: { fontSize: 16, fontWeight: '600' },
   buttonTextSmall: { fontSize: 14 },
   field: { gap: Spacing.one + 2 },
@@ -408,7 +438,7 @@ const styles = StyleSheet.create({
   },
   inputMultiline: { minHeight: 88, textAlignVertical: 'top' },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
-  chip: { borderWidth: 1, borderRadius: 18, paddingHorizontal: 12, paddingVertical: 7 },
+  chip: { borderWidth: 1, borderRadius: 20, paddingHorizontal: 14, minHeight: 40, justifyContent: 'center' },
   chipText: { fontSize: 14, fontWeight: '500' },
   toggleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   dateRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },

@@ -1,7 +1,7 @@
 import { router } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
 
-import { Body, Button, Card, Heading, Muted, Screen } from '@/components/ui';
+import { Body, Button, Card, Heading, LoadError, Muted, Screen } from '@/components/ui';
 import { Spacing } from '@/constants/theme';
 import { INACTIVE_STATUSES } from '@/lib/constants';
 import { useAuth } from '@/lib/auth';
@@ -11,7 +11,7 @@ import { useFocusData } from '@/lib/use-data';
 
 export default function HomeScreen() {
   const { profile } = useAuth();
-  const { data } = useFocusData(async () => {
+  const { data, error, reload } = useFocusData(async () => {
     const [tanks, fish, spawns, events] = await Promise.all([
       listTanks(),
       listFish(),
@@ -32,6 +32,8 @@ export default function HomeScreen() {
         <Heading>Hello{profile?.display_name ? `, ${profile.display_name}` : ''}</Heading>
         <Muted>Breeder initials {profile?.breeder_initials}</Muted>
       </View>
+
+      {error ? <LoadError message={`Couldn't load your counts. ${error}`} onRetry={reload} /> : null}
 
       <View style={styles.stats}>
         <Card style={styles.stat}>

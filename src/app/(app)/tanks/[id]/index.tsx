@@ -90,6 +90,12 @@ export default function TankScreen() {
         title={`Fish (${fish.length})`}
         action={<Button title="Move fish here" small onPress={() => go('/tanks/[id]/add-fish')} />}>
         {fish.length === 0 ? <Empty>No fish in this tank.</Empty> : null}
+        <Button
+          title="Add new fish"
+          variant="secondary"
+          small
+          onPress={() => router.push({ pathname: '/fish/new', params: { tankId: id } })}
+        />
         {fish.map((f) => (
           <ListRow
             key={f.id}

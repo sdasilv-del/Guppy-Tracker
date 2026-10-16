@@ -6,6 +6,7 @@ import { Button, DateField, ErrorText, Field, Loading, NumberField, Screen } fro
 import { Spacing } from '@/constants/theme';
 import { deleteWaterTest, getWaterTest, saveWaterTest } from '@/lib/db';
 import { blankToNull, numberText, parseNumber, todayISO } from '@/lib/format';
+import { attempt } from '@/lib/alerts';
 
 const READINGS = [
   { key: 'temperature_c', label: 'Temperature (°C)' },
@@ -53,7 +54,11 @@ export default function WaterTestScreen() {
         setNotes(t.notes ?? '');
       }
       setLoading(false);
-    });
+    })
+      .catch((e) => {
+        setError(e instanceof Error ? e.message : String(e));
+        setLoading(false);
+      });
   }, [testId]);
 
   if (loading) return <Loading />;
@@ -93,10 +98,7 @@ export default function WaterTestScreen() {
       {
         text: 'Delete',
         style: 'destructive',
-        onPress: async () => {
-          await deleteWaterTest(testId!);
-          router.back();
-        },
+        onPress: () => attempt(() => deleteWaterTest(testId!), () => router.back()),
       },
     ]);
   }

@@ -17,6 +17,7 @@ import {
   updateGroup,
 } from '@/lib/db';
 import { useFocusData } from '@/lib/use-data';
+import { attempt } from '@/lib/alerts';
 
 export default function EditGroupScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -45,10 +46,7 @@ export default function EditGroupScreen() {
         {
           text: 'Delete',
           style: 'destructive',
-          onPress: async () => {
-            await deleteGroup(id);
-            router.dismissTo('/groups');
-          },
+          onPress: () => attempt(() => deleteGroup(id), () => router.dismissTo('/groups')),
         },
       ],
     );

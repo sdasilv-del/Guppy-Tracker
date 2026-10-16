@@ -47,22 +47,22 @@ export function ReasonSelect({
       {chosen.length > 0 ? (
         <View style={styles.chips}>
           {chosen.map((r) => (
-            <Pressable
+            // Only the ✕ removes a reason, so tapping the label by mistake can't undo a choice.
+            <View
               key={r.id}
-              accessibilityRole="button"
-              accessibilityLabel={`Remove ${r.label}`}
-              onPress={() => onChange(selected.filter((id) => id !== r.id))}
-              style={[
-                styles.chip,
-                {
-                  backgroundColor: r.disqualifies ? theme.danger : theme.backgroundSelected,
-                },
-              ]}>
+              style={[styles.chip, { backgroundColor: r.disqualifies ? theme.danger : theme.backgroundSelected }]}>
               <Text style={[styles.chipText, { color: r.disqualifies ? theme.onAccent : theme.text }]}>
                 {r.label}
               </Text>
-              <Text style={[styles.chipX, { color: r.disqualifies ? theme.onAccent : theme.textSecondary }]}>✕</Text>
-            </Pressable>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={`Remove ${r.label}`}
+                onPress={() => onChange(selected.filter((id) => id !== r.id))}
+                hitSlop={8}
+                style={styles.chipRemove}>
+                <Text style={[styles.chipX, { color: r.disqualifies ? theme.onAccent : theme.textSecondary }]}>✕</Text>
+              </Pressable>
+            </View>
           ))}
         </View>
       ) : null}
@@ -128,20 +128,21 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     paddingHorizontal: 10,
     paddingVertical: 8,
-    minHeight: 40,
+    minHeight: 44,
   },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.one },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
   chip: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    borderRadius: 14,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
+    borderRadius: 16,
+    paddingLeft: 12,
+    minHeight: 32,
     maxWidth: '100%',
   },
-  chipText: { fontSize: 13, flexShrink: 1 },
-  chipX: { fontSize: 12, fontWeight: '700' },
+  chipRemove: { width: 32, height: 32, alignItems: 'center', justifyContent: 'center' },
+  chipText: { fontSize: 14, flexShrink: 1, paddingVertical: 6 },
+  chipX: { fontSize: 14, fontWeight: '700' },
   sheet: { flex: 1, padding: Spacing.three, gap: Spacing.two },
   sheetTitle: { fontSize: 20, fontWeight: '700' },
   list: { gap: Spacing.two, paddingVertical: Spacing.two },

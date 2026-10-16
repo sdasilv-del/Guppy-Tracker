@@ -7,6 +7,7 @@ import { Button, ChipSelect, DateField, ErrorText, Field, Loading, Muted, Number
 import { deleteFishTrait, getFishTrait, listTraits, saveFishTrait } from '@/lib/db';
 import { blankToNull, numberText, parseNumber, todayISO } from '@/lib/format';
 import type { Trait } from '@/lib/types';
+import { attempt } from '@/lib/alerts';
 
 export default function FishTraitScreen() {
   const { id, recordId, traitId: presetTrait } = useLocalSearchParams<{
@@ -83,10 +84,7 @@ export default function FishTraitScreen() {
       {
         text: 'Delete',
         style: 'destructive',
-        onPress: async () => {
-          await deleteFishTrait(recordId!);
-          router.back();
-        },
+        onPress: () => attempt(() => deleteFishTrait(recordId!), () => router.back()),
       },
     ]);
   }

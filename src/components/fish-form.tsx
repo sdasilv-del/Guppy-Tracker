@@ -1,6 +1,7 @@
 import * as ImagePicker from 'expo-image-picker';
 import { Image } from 'expo-image';
 import { useState } from 'react';
+
 import { StyleSheet, Text, View } from 'react-native';
 
 import { FishPicker, fishLabel } from '@/components/fish-picker';
@@ -32,6 +33,7 @@ import type { FishInput } from '@/lib/db';
 import { blankToNull } from '@/lib/format';
 import type { Fish, Tank } from '@/lib/types';
 import { useTheme } from '@/hooks/use-theme';
+import { useUnsavedChanges } from '@/hooks/use-unsaved-changes';
 
 export type PickedPhoto = { uri: string; base64: string; mimeType: string };
 
@@ -102,6 +104,8 @@ export function FishForm({
   initialTankId,
   submitLabel,
   onSubmit,
+  againLabel,
+  onSubmitAgain,
 }: {
   initial?: Fish;
   defaults?: Partial<FishInput>;
@@ -110,6 +114,9 @@ export function FishForm({
   initialTankId?: string;
   submitLabel: string;
   onSubmit: (input: FishInput, photo: PickedPhoto | null) => Promise<void>;
+  // An optional second save button, e.g. "Save and pick another".
+  againLabel?: string;
+  onSubmitAgain?: (input: FishInput, photo: PickedPhoto | null) => Promise<void>;
 }) {
   // A new fish can start from suggested values, e.g. a fry picked from a spawn.
   const seed: Partial<FishInput> = initial ?? defaults ?? {};
@@ -134,6 +141,13 @@ export function FishForm({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const values = {
+    name, sex, tail, baseColour, coverColours, strain, dob, generation, origin, foundation,
+    originalBreeder, sireId, damId, tankId, status, notes, pickReason, photo: photo?.uri ?? null,
+  };
+  const [startValues] = useState(() => JSON.stringify(values));
+  const { allowLeave, blockLeave } = useUnsavedChanges(JSON.stringify(values) !== startValues);
+
   const others = allFish.filter((f) => f.id !== initial?.id);
   const strains = Array.from(new Set(allFish.map((f) => f.strain).filter((s): s is string => !!s))).sort();
   const sexChanges = initial && (initial.sex !== sex || initial.tail_standard !== tail);
@@ -143,15 +157,16 @@ export function FishForm({
     if (picked) setPhoto(picked);
   }
 
-  async function submit() {
+  async function submit(action = onSubmit) {
     if (!tail) {
       setError('Pick the tail standard.');
       return;
     }
     setBusy(true);
     setError(null);
+    allowLeave();
     try {
-      await onSubmit(
+      await action(
         {
           name: blankToNull(name),
           sex,
@@ -175,6 +190,7 @@ export function FishForm({
         photo,
       );
     } catch (e) {
+      blockLeave();
       setError(e instanceof Error ? e.message : String(e));
       setBusy(false);
     }
@@ -265,7 +281,10 @@ export function FishForm({
       <ChipSelect label="Status" options={FISH_STATUSES} value={status} onChange={(v) => v && setStatus(v)} />
       <Field label="Notes" value={notes} onChangeText={setNotes} multiline />
       <ErrorText message={error} />
-      <Button title={submitLabel} onPress={submit} busy={busy} />
+      <Button title={submitLabel} onPress={() => submit()} busy={busy} />
+      {againLabel && onSubmitAgain ? (
+        <Button title={againLabel} variant="secondary" onPress={() => submit(onSubmitAgain)} disabled={busy} />
+      ) : null}
     </>
   );
 }
