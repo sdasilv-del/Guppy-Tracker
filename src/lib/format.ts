@@ -48,3 +48,20 @@ export function blankToNull(text: string): string | null {
   const t = text.trim();
   return t === '' ? null : t;
 }
+
+// Temperatures are stored in °C and shown in the unit chosen on the profile.
+export type TempUnit = 'C' | 'F';
+
+export function toDisplayTemp(celsius: number, unit: TempUnit): number {
+  const v = unit === 'F' ? (celsius * 9) / 5 + 32 : celsius;
+  return Math.round(v * 10) / 10;
+}
+
+export function fromDisplayTemp(value: number, unit: TempUnit): number {
+  const c = unit === 'F' ? ((value - 32) * 5) / 9 : value;
+  return Math.round(c * 100) / 100;
+}
+
+export function formatTemp(celsius: number | null, unit: TempUnit): string | null {
+  return celsius === null ? null : `${toDisplayTemp(celsius, unit)} °${unit}`;
+}
