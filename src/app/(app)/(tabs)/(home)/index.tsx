@@ -8,7 +8,15 @@ import { type IconName, Icons } from '@/constants/icons';
 import { Spacing } from '@/constants/theme';
 import { INACTIVE_STATUSES } from '@/lib/constants';
 import { useAuth } from '@/lib/auth';
-import { lastWaterChangeByTank, listFish, listSpawnEvents, listSpawns, listTanks } from '@/lib/db';
+import {
+  lastWaterChangeByTank,
+  listCustomReminders,
+  listFish,
+  listSnoozes,
+  listSpawnEvents,
+  listSpawns,
+  listTanks,
+} from '@/lib/db';
 import { todayISO } from '@/lib/format';
 import {
   disableNotifications,
@@ -41,18 +49,40 @@ const REMINDER_ICONS: Record<ReminderKind, IconName> = {
   water_change: Icons.waterChange,
   sex_fry: Icons.fish,
   separate_males: Icons.move,
+  custom: Icons.reminder,
 };
 
 // Show what's due or overdue, then the next week, so the list stays short.
 const COMING_UP_DAYS = 7;
 
 function ReminderRow({ reminder, today }: { reminder: Reminder; today: string }) {
+  const theme = useTheme();
   return (
     <ListRow
       icon={REMINDER_ICONS[reminder.kind]}
       title={reminder.title}
-      subtitle={dueLabel(reminder.due, today)}
+      subtitle={`${dueLabel(reminder.due, today)}${reminder.snoozed ? ' · snoozed' : ''}`}
       onPress={() => router.push(reminder.href)}
+      right={
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={reminder.customId ? `Snooze or mark done: ${reminder.title}` : `Snooze: ${reminder.title}`}
+          hitSlop={10}
+          onPress={() =>
+            router.push({
+              pathname: '/reminders/actions',
+              params: {
+                key: reminder.key,
+                title: reminder.title,
+                due: reminder.due,
+                ...(reminder.customId ? { customId: reminder.customId } : {}),
+              },
+            })
+          }
+          style={({ pressed }) => [styles.snooze, { opacity: pressed ? 0.6 : 1 }]}>
+          <Icon name={reminder.customId ? Icons.done : Icons.snooze} size={20} color={theme.accent} />
+        </Pressable>
+      }
     />
   );
 }
@@ -61,15 +91,17 @@ export default function HomeScreen() {
   const { profile } = useAuth();
   const theme = useTheme();
   const { data, error, reload } = useFocusData(async () => {
-    const [tanks, fish, spawns, events, lastWaterChange] = await Promise.all([
+    const [tanks, fish, spawns, events, lastWaterChange, custom, snoozes] = await Promise.all([
       listTanks(),
       listFish(),
       listSpawns(),
       listSpawnEvents(),
       lastWaterChangeByTank(),
+      listCustomReminders(),
+      listSnoozes(),
     ]);
     const today = todayISO();
-    const reminders = buildReminders({ tanks, lastWaterChange, spawns, events, fish, today });
+    const reminders = buildReminders({ tanks, lastWaterChange, spawns, events, fish, custom, snoozes, today });
     scheduleReminderNotifications(reminders).catch(() => {});
     return {
       today,
@@ -151,6 +183,13 @@ export default function HomeScreen() {
           {!data.hasSchedules ? (
             <Muted>Set a water change schedule on a tank to get reminders for it.</Muted>
           ) : null}
+          <Button
+            title="Add a reminder"
+            icon={Icons.add}
+            variant="secondary"
+            small
+            onPress={() => router.push('/reminders/edit')}
+          />
         </Section>
       ) : null}
 
@@ -187,4 +226,5 @@ const styles = StyleSheet.create({
   statWrap: { flexBasis: '47%', flexGrow: 1 },
   stat: { alignItems: 'center', gap: 0 },
   statNumber: { fontSize: 28, lineHeight: 34, fontWeight: '700' },
+  snooze: { paddingHorizontal: Spacing.one },
 });

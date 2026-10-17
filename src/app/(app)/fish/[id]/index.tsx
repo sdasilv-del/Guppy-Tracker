@@ -235,6 +235,13 @@ export default function FishScreen() {
           <Button title="Move" icon={Icons.move} onPress={() => router.push({ pathname: '/fish/[id]/move', params: { id } })} />
         </View>
       </View>
+      <Button
+        title="Remind me about this fish"
+        icon={Icons.reminder}
+        variant="secondary"
+        small
+        onPress={() => router.push({ pathname: '/reminders/edit', params: { fishId: id } })}
+      />
       <Section
         title="Traits"
         action={

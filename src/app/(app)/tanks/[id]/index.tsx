@@ -113,6 +113,13 @@ export default function TankScreen() {
           <Button title="QR code" icon={Icons.qr} variant="secondary" small onPress={() => go('/tanks/[id]/qr')} />
         </View>
       </View>
+      <Button
+        title="Remind me about this tank"
+        icon={Icons.reminder}
+        variant="secondary"
+        small
+        onPress={() => router.push({ pathname: '/reminders/edit', params: { tankId: id } })}
+      />
 
       <Section
         title={`Fish (${fish.length})`}

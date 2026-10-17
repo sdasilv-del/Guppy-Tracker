@@ -5,11 +5,13 @@ import type {
   BreedingGroup,
   CareKind,
   CareLog,
+  CustomReminder,
   Evaluation,
   FishTrait,
   Fish,
   FishMove,
   FishPhoto,
+  ReminderSnooze,
   Sale,
   ShowEntry,
   Spawn,
@@ -602,4 +604,37 @@ export async function saveSale(id: string | null, input: SaleInput): Promise<voi
 
 export async function deleteSale(id: string): Promise<void> {
   must(await supabase.from('sales').delete().eq('id', id));
+}
+
+// Reminders ---------------------------------------------------------------------
+
+export async function listCustomReminders(): Promise<CustomReminder[]> {
+  return must(await supabase.from('custom_reminders').select('*').order('due_on'));
+}
+
+export async function getCustomReminder(id: string): Promise<CustomReminder | null> {
+  return must(await supabase.from('custom_reminders').select('*').eq('id', id).maybeSingle());
+}
+
+export type CustomReminderInput = Omit<CustomReminder, 'id' | 'created_at'>;
+
+export async function saveCustomReminder(id: string | null, input: CustomReminderInput): Promise<void> {
+  if (id) must(await supabase.from('custom_reminders').update(input).eq('id', id));
+  else must(await supabase.from('custom_reminders').insert(input));
+}
+
+export async function deleteCustomReminder(id: string): Promise<void> {
+  must(await supabase.from('custom_reminders').delete().eq('id', id));
+}
+
+export async function listSnoozes(): Promise<ReminderSnooze[]> {
+  return must(await supabase.from('reminder_snoozes').select('reminder_key, snoozed_until'));
+}
+
+export async function snoozeReminder(key: string, until: string): Promise<void> {
+  must(
+    await supabase
+      .from('reminder_snoozes')
+      .upsert({ reminder_key: key, snoozed_until: until }, { onConflict: 'user_id,reminder_key' }),
+  );
 }

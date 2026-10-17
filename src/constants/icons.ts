@@ -27,6 +27,8 @@ export const Icons = {
   sale: { ios: 'tag', android: 'sell' },
   strain: { ios: 'chart.bar.xaxis', android: 'bar_chart' },
   reminder: { ios: 'bell', android: 'notifications' },
+  snooze: { ios: 'clock.arrow.circlepath', android: 'snooze' },
+  done: { ios: 'checkmark.circle', android: 'check_circle' },
   offline: { ios: 'icloud.slash', android: 'cloud_off' },
   waiting: { ios: 'icloud.and.arrow.up', android: 'cloud_upload' },
   warning: { ios: 'exclamationmark.triangle', android: 'warning' },

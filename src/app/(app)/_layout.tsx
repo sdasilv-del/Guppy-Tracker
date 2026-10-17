@@ -6,6 +6,16 @@ export default function AppLayout() {
       <Stack.Screen name="(tabs)" options={{ headerShown: false, title: 'Home' }} />
       <Stack.Screen name="profile" options={{ title: 'Profile' }} />
       <Stack.Screen name="export" options={{ title: 'Export and print' }} />
+      <Stack.Screen name="reminders/edit" options={{ title: 'Reminder' }} />
+      <Stack.Screen
+        name="reminders/actions"
+        options={{
+          headerShown: false,
+          presentation: 'formSheet',
+          sheetAllowedDetents: 'fitToContents',
+          sheetGrabberVisible: true,
+        }}
+      />
       <Stack.Screen name="scan" options={{ title: 'Scan tank QR', presentation: 'modal' }} />
       <Stack.Screen name="tanks/new" options={{ title: 'New tank' }} />
       <Stack.Screen name="tanks/[id]/index" options={{ title: 'Tank' }} />

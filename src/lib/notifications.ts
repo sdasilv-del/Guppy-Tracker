@@ -52,7 +52,7 @@ export async function disableNotifications() {
 }
 
 function summary(items: Reminder[]): string {
-  const counts = { water_change: 0, sex_fry: 0, separate_males: 0 };
+  const counts = { water_change: 0, sex_fry: 0, separate_males: 0, custom: 0 };
   for (const r of items) counts[r.kind]++;
   const parts = [
     counts.water_change ? `${counts.water_change} water change${counts.water_change === 1 ? '' : 's'}` : null,
@@ -60,6 +60,12 @@ function summary(items: Reminder[]): string {
     counts.separate_males
       ? `${counts.separate_males} batch${counts.separate_males === 1 ? '' : 'es'} to separate`
       : null,
+    // One of your own reminders is named; several are counted.
+    counts.custom === 1
+      ? items.find((r) => r.kind === 'custom')!.title
+      : counts.custom > 1
+        ? `${counts.custom} of your own reminders`
+        : null,
   ].filter(Boolean);
   return parts.join(', ');
 }

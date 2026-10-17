@@ -203,3 +203,19 @@ export type CareLog = {
   notes: string | null;
   created_at: string;
 };
+
+export type CustomReminder = {
+  id: string;
+  title: string;
+  due_on: string;
+  repeat_every_days: number | null;
+  fish_id: string | null;
+  tank_id: string | null;
+  notes: string | null;
+  created_at: string;
+};
+
+export type ReminderSnooze = {
+  reminder_key: string;
+  snoozed_until: string;
+};

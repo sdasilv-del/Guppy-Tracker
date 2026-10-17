@@ -2,7 +2,7 @@ import type { Href } from 'expo-router';
 
 import { fromISODate, toISODate } from '@/lib/format';
 import { summarizeBatch } from '@/lib/spawn';
-import type { Fish, Spawn, SpawnEvent, Tank } from '@/lib/types';
+import type { CustomReminder, Fish, ReminderSnooze, Spawn, SpawnEvent, Tank } from '@/lib/types';
 
 // When fry are usually sexed and the males moved out, counted from the day they were born.
 export const SEX_FRY_AFTER_DAYS = 28;
@@ -10,7 +10,7 @@ export const SEPARATE_MALES_AFTER_DAYS = 42;
 // Older batches are left alone: by then they've been sorted, sold or forgotten on purpose.
 const SPAWN_REMINDERS_UNTIL_DAYS = 120;
 
-export type ReminderKind = 'water_change' | 'sex_fry' | 'separate_males';
+export type ReminderKind = 'water_change' | 'sex_fry' | 'separate_males' | 'custom';
 
 export type Reminder = {
   key: string;
@@ -18,6 +18,10 @@ export type Reminder = {
   title: string;
   due: string;
   href: Href;
+  // Set on reminders you added yourself, so they can be marked done or edited.
+  customId?: string;
+  // Set when the reminder was snoozed past its real due date.
+  snoozed?: boolean;
 };
 
 export function addDays(iso: string, days: number): string {
@@ -39,9 +43,11 @@ export function buildReminders(input: {
   spawns: Spawn[];
   events: SpawnEvent[];
   fish: Fish[];
+  custom?: CustomReminder[];
+  snoozes?: ReminderSnooze[];
   today: string;
 }): Reminder[] {
-  const { tanks, lastWaterChange, spawns, events, fish, today } = input;
+  const { tanks, lastWaterChange, spawns, events, fish, custom = [], snoozes = [], today } = input;
   const out: Reminder[] = [];
 
   for (const t of tanks) {
@@ -80,6 +86,34 @@ export function buildReminders(input: {
         due: addDays(s.born_on, SEPARATE_MALES_AFTER_DAYS),
         href,
       });
+    }
+  }
+
+  const fishCode = Object.fromEntries(fish.map((f) => [f.id, f.fish_code]));
+  const tankCode = Object.fromEntries(tanks.map((t) => [t.id, t.tank_code]));
+  for (const c of custom) {
+    const on = c.fish_id ? fishCode[c.fish_id] : c.tank_id ? tankCode[c.tank_id] : undefined;
+    out.push({
+      key: `custom-${c.id}`,
+      kind: 'custom',
+      title: on ? `${c.title} (${on})` : c.title,
+      due: c.due_on,
+      href: c.fish_id
+        ? { pathname: '/fish/[id]', params: { id: c.fish_id } }
+        : c.tank_id
+          ? { pathname: '/tanks/[id]', params: { id: c.tank_id } }
+          : { pathname: '/reminders/edit', params: { reminderId: c.id } },
+      customId: c.id,
+    });
+  }
+
+  // A snooze pushes a reminder's date on, but never pulls it earlier.
+  const until = Object.fromEntries(snoozes.map((s) => [s.reminder_key, s.snoozed_until]));
+  for (const r of out) {
+    const u = until[r.key];
+    if (u && u > r.due) {
+      r.due = u;
+      r.snoozed = true;
     }
   }
 
