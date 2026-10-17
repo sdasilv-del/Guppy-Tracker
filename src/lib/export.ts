@@ -1,7 +1,17 @@
-import { BASE_COLOURS, COVER_COLOURS, FISH_STATUSES, labelOf, ORIGINS, SEXES, TAIL_OPTIONS } from '@/lib/constants';
+import {
+  BASE_COLOURS,
+  COVER_COLOURS,
+  EVALUATION_KINDS,
+  FISH_STATUSES,
+  ihsMaxTotal,
+  labelOf,
+  ORIGINS,
+  SEXES,
+  TAIL_OPTIONS,
+} from '@/lib/constants';
 import { formatDate, todayISO } from '@/lib/format';
 import { pedigreeColumns } from '@/lib/pedigree';
-import type { Fish, Profile, Sale, ShowEntry, Tank, WaterTest } from '@/lib/types';
+import type { Evaluation, Fish, Profile, Sale, ShowEntry, Tank, WaterTest } from '@/lib/types';
 
 // Spreadsheets and printouts built from the fish room records. Nothing here touches the phone,
 // so it can be tested on its own; share.ts saves and shares the result.
@@ -112,7 +122,18 @@ const CERT_DEPTH = 3;
 const CERT_HEADINGS = ['Fish', 'Parents', 'Grandparents', 'Great-grandparents'];
 
 // A one-page pedigree to hand to a buyer: the fish's details and three generations of ancestors.
-export function certificateHtml(fish: Fish, allFish: Fish[], profile: Profile | null): string {
+// The evaluation to show off: the highest share of the maximum, official results first on a tie.
+export function bestEvaluation(evaluations: Evaluation[]): Evaluation | null {
+  const rank = (e: Evaluation) => e.total / ihsMaxTotal(e.sex) + (e.kind === 'official' ? 1e-6 : 0);
+  return evaluations.reduce<Evaluation | null>((best, e) => (!best || rank(e) > rank(best) ? e : best), null);
+}
+
+export function certificateHtml(
+  fish: Fish,
+  allFish: Fish[],
+  profile: Profile | null,
+  extras: { photo?: string | null; best?: Evaluation | null } = {},
+): string {
   const byId = Object.fromEntries(allFish.map((f) => [f.id, f]));
   const columns = pedigreeColumns(fish, byId, CERT_DEPTH);
   const rowsTotal = columns[CERT_DEPTH].length;
@@ -145,6 +166,19 @@ export function certificateHtml(fish: Fish, allFish: Fish[], profile: Profile | 
     ['Generation', fish.generation ?? ''],
     ['Born', formatDate(fish.date_of_birth)],
     ['Original breeder', fish.original_breeder ?? ''],
+    [
+      'Best IHS score',
+      extras.best
+        ? [
+            `${extras.best.total} of ${ihsMaxTotal(extras.best.sex)}`,
+            labelOf(EVALUATION_KINDS, extras.best.kind),
+            extras.best.event,
+            formatDate(extras.best.evaluated_on),
+          ]
+            .filter(Boolean)
+            .join(', ')
+        : '',
+    ],
   ];
   const detailRows = details
     .filter(([, v]) => v)
@@ -155,6 +189,7 @@ export function certificateHtml(fish: Fish, allFish: Fish[], profile: Profile | 
   return `<html><head><meta charset="utf-8"><style>${PAGE_STYLE}</style></head><body>
     <h1>Pedigree certificate</h1>
     <div class="sub">${escapeHtml(fish.fish_code)}${breeder ? ` · Bred by ${breeder}` : ''}</div>
+    ${extras.photo ? `<img src="${escapeHtml(extras.photo)}" style="display: block; max-width: 100%; max-height: 260px; margin: 0 auto 16px; border-radius: 8px;" />` : ''}
     <table>${detailRows}</table>
     <h2 style="font-size: 16px; margin: 20px 0 8px;">Pedigree</h2>
     <table>

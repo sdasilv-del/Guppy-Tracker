@@ -1,4 +1,5 @@
 import { router, Stack, useLocalSearchParams } from 'expo-router';
+import { useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { Button, Card, ErrorText, Loading, Muted, Screen } from '@/components/ui';
@@ -6,10 +7,10 @@ import { Icons } from '@/constants/icons';
 import { Spacing } from '@/constants/theme';
 import { labelOf, TAIL_STANDARDS } from '@/lib/constants';
 import { useAuth } from '@/lib/auth';
-import { listFish } from '@/lib/db';
-import { certificateHtml } from '@/lib/export';
+import { latestPhotoPaths, listEvaluations, listFish, signedPhotoUrls } from '@/lib/db';
+import { bestEvaluation, certificateHtml } from '@/lib/export';
 import { pedigreeColumns, repeatedAncestors } from '@/lib/pedigree';
-import { printHtml } from '@/lib/share';
+import { imageDataUri, printHtml } from '@/lib/share';
 import type { Fish } from '@/lib/types';
 import { useFocusData } from '@/lib/use-data';
 import { useTheme } from '@/hooks/use-theme';
@@ -48,6 +49,7 @@ export default function PedigreeScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const theme = useTheme();
   const { profile } = useAuth();
+  const [printing, setPrinting] = useState(false);
   const { data, error } = useFocusData(listFish);
 
   if (!data && !error) return <Loading />;
@@ -95,13 +97,29 @@ export default function PedigreeScreen() {
         title="Print pedigree certificate"
         icon={Icons.print}
         variant="secondary"
-        onPress={() =>
-          printHtml(certificateHtml(fish, data ?? [], profile)).catch((e) =>
-            Alert.alert("Couldn't print", e instanceof Error ? e.message : String(e)),
-          )
-        }
+        busy={printing}
+        onPress={async () => {
+          setPrinting(true);
+          try {
+            const [evaluations, paths] = await Promise.all([listEvaluations(fish.id), latestPhotoPaths([fish.id])]);
+            // The certificate still prints without the photo if it can't be fetched, e.g. offline.
+            let photo: string | null = null;
+            const path = paths[fish.id];
+            if (path) {
+              try {
+                const url = (await signedPhotoUrls([path]))[path];
+                if (url) photo = await imageDataUri(url);
+              } catch {}
+            }
+            await printHtml(certificateHtml(fish, data ?? [], profile, { photo, best: bestEvaluation(evaluations) }));
+          } catch (e) {
+            Alert.alert("Couldn't print", e instanceof Error ? e.message : String(e));
+          } finally {
+            setPrinting(false);
+          }
+        }}
       />
-      <Muted>A one-page certificate with three generations, to give a buyer or save as a PDF.</Muted>
+      <Muted>A one-page certificate with the fish&apos;s photo, best IHS score and three generations, to give a buyer or save as a PDF.</Muted>
     </Screen>
   );
 }

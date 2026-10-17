@@ -21,3 +21,10 @@ export async function shareCsv(name: string, csv: string) {
 export async function printHtml(html: string) {
   await Print.printAsync({ html });
 }
+
+// Downloads an image and returns it as a data URI, so a printout always includes it
+// (a remote link may not have loaded by the time the page is printed).
+export async function imageDataUri(url: string): Promise<string> {
+  const file = await File.downloadFileAsync(url, new File(Paths.cache, 'print-image.jpg'), { idempotent: true });
+  return `data:image/jpeg;base64,${await file.base64()}`;
+}
