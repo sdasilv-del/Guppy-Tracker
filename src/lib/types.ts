@@ -188,3 +188,17 @@ export type Sale = {
   notes: string | null;
   created_at: string;
 };
+
+export type CareKind = 'feeding' | 'treatment';
+
+export type CareLog = {
+  id: string;
+  tank_id: string;
+  kind: CareKind;
+  logged_on: string;
+  item: string;
+  amount: string | null;
+  course_days: number | null;
+  notes: string | null;
+  created_at: string;
+};

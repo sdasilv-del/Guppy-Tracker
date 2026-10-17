@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { Body, Button, ChipSelect, ErrorText, Heading, LoadError, Loading, Muted } from '@/components/ui';
+import { Icons } from '@/constants/icons';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { getTank, listWaterChanges, saveWaterChange } from '@/lib/db';
@@ -76,6 +77,27 @@ export default function QuickLogSheet() {
           <Button title={`Log ${chosen}% water change today`} onPress={logChange} busy={busy} />
         </View>
       )}
+
+      <View style={styles.row}>
+        <View style={styles.cell}>
+          <Button
+            title="Fed"
+            icon={Icons.feeding}
+            small
+            variant="secondary"
+            onPress={() => router.replace({ pathname: '/tanks/[id]/care', params: { id, kind: 'feeding' } })}
+          />
+        </View>
+        <View style={styles.cell}>
+          <Button
+            title="Treatment"
+            icon={Icons.treatment}
+            small
+            variant="secondary"
+            onPress={() => router.replace({ pathname: '/tanks/[id]/care', params: { id, kind: 'treatment' } })}
+          />
+        </View>
+      </View>
 
       <View style={styles.row}>
         <View style={styles.cell}>
