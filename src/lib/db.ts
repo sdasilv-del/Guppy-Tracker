@@ -137,6 +137,11 @@ export async function saveWaterChange(id: string | null, input: WaterChangeInput
   else must(await supabase.from('water_changes').insert(input));
 }
 
+// The same water change in several tanks, in one request.
+export async function addWaterChanges(inputs: WaterChangeInput[]): Promise<void> {
+  must(await supabase.from('water_changes').insert(inputs));
+}
+
 export async function deleteWaterChange(id: string): Promise<void> {
   must(await supabase.from('water_changes').delete().eq('id', id));
 }
@@ -176,6 +181,11 @@ export type CareLogInput = Omit<CareLog, 'id' | 'created_at'>;
 export async function saveCareLog(id: string | null, input: CareLogInput): Promise<void> {
   if (id) must(await supabase.from('care_logs').update(input).eq('id', id));
   else must(await supabase.from('care_logs').insert(input));
+}
+
+// The same feeding or dose in several tanks, in one request.
+export async function addCareLogs(inputs: CareLogInput[]): Promise<void> {
+  must(await supabase.from('care_logs').insert(inputs));
 }
 
 export async function deleteCareLog(id: string): Promise<void> {

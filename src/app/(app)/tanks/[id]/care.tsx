@@ -2,9 +2,10 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Alert } from 'react-native';
 
+import { OtherTanks } from '@/components/other-tanks';
 import { Button, ChipSelect, DateField, ErrorText, Field, Loading, NumberField, Screen } from '@/components/ui';
 import { attempt } from '@/lib/alerts';
-import { deleteCareLog, getCareLog, recentCareItems, saveCareLog } from '@/lib/db';
+import { addCareLogs, deleteCareLog, getCareLog, recentCareItems, saveCareLog } from '@/lib/db';
 import { blankToNull, numberText, parseNumber, todayISO } from '@/lib/format';
 import type { CareKind } from '@/lib/types';
 
@@ -26,6 +27,7 @@ export default function CareLogScreen() {
   const [days, setDays] = useState('');
   const [notes, setNotes] = useState('');
   const [recent, setRecent] = useState<string[]>([]);
+  const [otherTanks, setOtherTanks] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -72,15 +74,16 @@ export default function CareLogScreen() {
     setBusy(true);
     setError(null);
     try {
-      await saveCareLog(logId ?? null, {
-        tank_id: id,
+      const entry = {
         kind,
         logged_on: date ?? todayISO(),
         item: item.trim(),
         amount: blankToNull(amount),
         course_days: courseDays,
         notes: blankToNull(notes),
-      });
+      };
+      if (logId) await saveCareLog(logId, { ...entry, tank_id: id });
+      else await addCareLogs([id, ...otherTanks].map((tankId) => ({ ...entry, tank_id: tankId })));
       router.back();
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -134,6 +137,7 @@ export default function CareLogScreen() {
         />
       ) : null}
       <Field label="Notes" value={notes} onChangeText={setNotes} multiline />
+      {!logId ? <OtherTanks currentTankId={id} value={otherTanks} onChange={setOtherTanks} /> : null}
       <ErrorText message={error} />
       <Button title={logId ? 'Save changes' : treatment ? 'Save treatment' : 'Save feeding'} onPress={save} busy={busy} />
       {logId ? <Button title={treatment ? 'Delete treatment' : 'Delete feeding'} variant="danger" onPress={confirmDelete} /> : null}

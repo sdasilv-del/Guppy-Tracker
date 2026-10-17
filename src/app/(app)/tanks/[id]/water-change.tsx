@@ -2,8 +2,9 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Alert } from 'react-native';
 
+import { OtherTanks } from '@/components/other-tanks';
 import { Button, DateField, ErrorText, Field, Loading, NumberField, Screen } from '@/components/ui';
-import { deleteWaterChange, getWaterChange, saveWaterChange } from '@/lib/db';
+import { addWaterChanges, deleteWaterChange, getWaterChange, saveWaterChange } from '@/lib/db';
 import { blankToNull, numberText, parseNumber, todayISO } from '@/lib/format';
 import { attempt } from '@/lib/alerts';
 
@@ -13,6 +14,7 @@ export default function WaterChangeScreen() {
   const [date, setDate] = useState<string | null>(todayISO());
   const [percent, setPercent] = useState('');
   const [notes, setNotes] = useState('');
+  const [otherTanks, setOtherTanks] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -43,12 +45,9 @@ export default function WaterChangeScreen() {
     setBusy(true);
     setError(null);
     try {
-      await saveWaterChange(changeId ?? null, {
-        tank_id: id,
-        changed_on: date ?? todayISO(),
-        percent: pct,
-        notes: blankToNull(notes),
-      });
+      const entry = { changed_on: date ?? todayISO(), percent: pct, notes: blankToNull(notes) };
+      if (changeId) await saveWaterChange(changeId, { ...entry, tank_id: id });
+      else await addWaterChanges([id, ...otherTanks].map((tankId) => ({ ...entry, tank_id: tankId })));
       router.back();
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -72,6 +71,7 @@ export default function WaterChangeScreen() {
       <DateField label="Date" value={date} onChange={setDate} />
       <NumberField label="Percent changed (%)" value={percent} onChangeText={setPercent} />
       <Field label="Notes" value={notes} onChangeText={setNotes} multiline placeholder="e.g. added salt, cleaned sponge filter" />
+      {!changeId ? <OtherTanks currentTankId={id} value={otherTanks} onChange={setOtherTanks} /> : null}
       <ErrorText message={error} />
       <Button title={changeId ? 'Save changes' : 'Save water change'} onPress={save} busy={busy} />
       {changeId ? <Button title="Delete water change" variant="danger" onPress={confirmDelete} /> : null}
