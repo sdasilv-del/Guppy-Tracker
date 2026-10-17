@@ -79,3 +79,39 @@ export function formatInbreeding(value: number): string {
   const pct = value * 100;
   return `${parseFloat(pct.toFixed(pct < 10 ? 2 : 1))}%`;
 }
+
+// Recorded ancestors two fish have in common, closest first, e.g. a grandsire on both sides.
+export function sharedAncestors(fish: Fish[], aId: string, bId: string): Fish[] {
+  const byId = new Map(fish.map((f) => [f.id, f]));
+  function ancestors(id: string): Map<string, number> {
+    const found = new Map<string, number>();
+    let level: string[] = [id];
+    for (let gen = 1; level.length > 0 && gen <= 30; gen++) {
+      const next: string[] = [];
+      for (const x of level) {
+        const f = byId.get(x);
+        for (const p of [f?.sire_id, f?.dam_id]) {
+          if (p && byId.has(p) && !found.has(p)) {
+            found.set(p, gen);
+            next.push(p);
+          }
+        }
+      }
+      level = next;
+    }
+    return found;
+  }
+  const a = ancestors(aId);
+  const b = ancestors(bId);
+  // One fish can be the other's ancestor too.
+  if (b.has(aId)) a.set(aId, 0);
+  if (a.has(bId)) b.set(bId, 0);
+  const shared = [...a.keys()].filter((id) => b.has(id));
+  // Leave out ancestors of a shared ancestor: naming the grandparent explains the great-grandparents.
+  const covered = new Set<string>();
+  for (const id of shared) for (const anc of ancestors(id).keys()) covered.add(anc);
+  return shared
+    .filter((id) => !covered.has(id))
+    .sort((x, y) => a.get(x)! + b.get(x)! - (a.get(y)! + b.get(y)!))
+    .map((id) => byId.get(id)!);
+}
