@@ -13,6 +13,7 @@ export const Icons = {
   waterChange: { ios: 'arrow.triangle.2.circlepath', android: 'autorenew' },
   feeding: { ios: 'fork.knife', android: 'restaurant' },
   treatment: { ios: 'cross.case', android: 'medical_services' },
+  filter: { ios: 'line.3.horizontal.decrease.circle', android: 'filter_list' },
   trait: { ios: 'star', android: 'star' },
   evaluation: { ios: 'rosette', android: 'military_tech' },
   pedigree: { ios: 'point.3.connected.trianglepath.dotted', android: 'account_tree' },
