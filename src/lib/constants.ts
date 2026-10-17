@@ -37,7 +37,12 @@ export const TAIL_STANDARDS = [
   { value: 'C4', label: 'C4 Pin tail' },
 ] as const;
 
-export type TailStandard = (typeof TAIL_STANDARDS)[number]['value'];
+// For a fish whose tail isn't known yet, e.g. a beginner's pet-store fish. Not an IKGH standard,
+// so it's kept out of TAIL_STANDARDS (show classes, judging guides) and only offered for fish.
+export const TAIL_UNKNOWN = { value: 'U', label: 'Not sure yet' } as const;
+export const TAIL_OPTIONS = [...TAIL_STANDARDS, TAIL_UNKNOWN] as const;
+
+export type TailStandard = (typeof TAIL_OPTIONS)[number]['value'];
 
 export const BASE_COLOURS = [
   { value: 1, label: '1 Grey' },

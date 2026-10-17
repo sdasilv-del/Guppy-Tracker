@@ -46,7 +46,8 @@
           "photosPermission": "Guppy Tracker lets you choose fish photos from your library.",
           "cameraPermission": "Guppy Tracker uses the camera to photograph your fish."
         }
-      ]
+      ],
+      "expo-sharing"
     ],
     "experiments": {
       "typedRoutes": true,

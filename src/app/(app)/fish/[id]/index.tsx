@@ -29,7 +29,7 @@ import {
   labelOf,
   ORIGINS,
   SEXES,
-  TAIL_STANDARDS,
+  TAIL_OPTIONS,
 } from '@/lib/constants';
 import { useAuth } from '@/lib/auth';
 import { isDisqualified } from '@/lib/ihs-reasons';
@@ -52,6 +52,7 @@ import {
 } from '@/lib/db';
 import { formatAge, formatDate } from '@/lib/format';
 import type { FishPhoto } from '@/lib/types';
+import { formatInbreeding, makeKinship } from '@/lib/kinship';
 import { useFocusData } from '@/lib/use-data';
 
 export default function FishScreen() {
@@ -106,6 +107,7 @@ export default function FishScreen() {
   }
 
   const byId = Object.fromEntries(data.allFish.map((f) => [f.id, f]));
+  const kin = makeKinship(data.allFish);
   const sire = fish.sire_id ? byId[fish.sire_id] : null;
   const dam = fish.dam_id ? byId[fish.dam_id] : null;
   const offspring = data.allFish.filter((f) => f.sire_id === id || f.dam_id === id);
@@ -179,7 +181,7 @@ export default function FishScreen() {
       <Card>
         <InfoRow label="Name" value={fish.name} />
         <InfoRow label="Sex" value={labelOf(SEXES, fish.sex)} />
-        <InfoRow label="Tail standard" value={labelOf(TAIL_STANDARDS, fish.tail_standard)} />
+        <InfoRow label="Tail standard" value={labelOf(TAIL_OPTIONS, fish.tail_standard)} />
         <InfoRow label="Base colour" value={labelOf(BASE_COLOURS, fish.base_colour)} />
         <InfoRow
           label="Cover colour"
@@ -191,6 +193,14 @@ export default function FishScreen() {
           value={fish.date_of_birth ? `${formatDate(fish.date_of_birth)} (${formatAge(fish.date_of_birth)})` : null}
         />
         <InfoRow label="Generation" value={fish.generation} />
+        <InfoRow
+          label="Inbreeding"
+          value={
+            fish.sire_id && fish.dam_id
+              ? `${formatInbreeding(kin.inbreeding(fish.id))} · ${kin.generationsKnown(fish.id)} generations recorded`
+              : 'Unknown, both parents needed'
+          }
+        />
         <InfoRow label="Origin" value={labelOf(ORIGINS, fish.origin)} />
         <InfoRow label="Foundation" value={fish.foundation ? 'Yes' : 'No'} />
         <InfoRow label="Original breeder" value={fish.original_breeder} />
@@ -225,6 +235,13 @@ export default function FishScreen() {
           <Button title="Move" icon={Icons.move} onPress={() => router.push({ pathname: '/fish/[id]/move', params: { id } })} />
         </View>
       </View>
+      <Button
+        title="Remind me about this fish"
+        icon={Icons.reminder}
+        variant="secondary"
+        small
+        onPress={() => router.push({ pathname: '/reminders/edit', params: { fishId: id } })}
+      />
       <Section
         title="Traits"
         action={

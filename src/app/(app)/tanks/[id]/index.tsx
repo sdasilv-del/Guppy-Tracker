@@ -1,7 +1,7 @@
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
 
-import { Button, Card, Empty, ErrorText, InfoRow, ListRow, Loading, Muted, Screen, Section } from '@/components/ui';
+import { Body, Button, Card, Empty, ErrorText, InfoRow, ListRow, Loading, Muted, Screen, Section } from '@/components/ui';
 import { Icons } from '@/constants/icons';
 import { Spacing } from '@/constants/theme';
 import { FISH_STATUSES, INACTIVE_STATUSES, labelOf, TANK_PURPOSES } from '@/lib/constants';
@@ -11,18 +11,21 @@ import {
   listFishInTank,
   listSpawnEvents,
   listSpawns,
+  listCareLogs,
   listWaterChanges,
   listWaterTests,
   spawnMovesIntoTank,
 } from '@/lib/db';
 import { summarizeBatch } from '@/lib/spawn';
-import { formatDate } from '@/lib/format';
+import { formatDate, formatTemp, fromISODate, todayISO, type TempUnit } from '@/lib/format';
 import type { WaterTest } from '@/lib/types';
+import { addDays, dueLabel } from '@/lib/reminders';
+import { useAuth } from '@/lib/auth';
 import { useFocusData } from '@/lib/use-data';
 
-function readingSummary(t: WaterTest): string {
+function readingSummary(t: WaterTest, unit: TempUnit): string {
   const parts = [
-    t.temperature_c !== null ? `${t.temperature_c} °C` : null,
+    formatTemp(t.temperature_c, unit),
     t.ph !== null ? `pH ${t.ph}` : null,
     t.ammonia !== null ? `NH3 ${t.ammonia}` : null,
     t.nitrite !== null ? `NO2 ${t.nitrite}` : null,
@@ -33,10 +36,15 @@ function readingSummary(t: WaterTest): string {
   return parts.filter(Boolean).join(' · ') || 'No readings';
 }
 
+function daysBetween(fromIso: string, toIso: string): number {
+  return Math.round((fromISODate(toIso).getTime() - fromISODate(fromIso).getTime()) / 86_400_000);
+}
+
 export default function TankScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const unit = useAuth().profile?.temperature_unit ?? 'C';
   const { data, error } = useFocusData(async () => {
-    const [tank, fish, tests, changes, allSpawns, movesIn, allFish] = await Promise.all([
+    const [tank, fish, tests, changes, allSpawns, movesIn, allFish, care] = await Promise.all([
       getTank(id),
       listFishInTank(id),
       listWaterTests(id),
@@ -44,12 +52,13 @@ export default function TankScreen() {
       listSpawns(),
       spawnMovesIntoTank(id),
       listFish(),
+      listCareLogs(id),
     ]);
     // Spawns kept in this tank, and spawns that had part of their batch moved here.
     const spawns = allSpawns.filter((s) => s.tank_id === id);
     const partSpawns = allSpawns.filter((s) => s.tank_id !== id && movesIn.some((m) => m.spawn_id === s.id));
     const events = await listSpawnEvents([...spawns, ...partSpawns].map((s) => s.id));
-    return { tank, fish, tests, changes, spawns, partSpawns, movesIn, events, allFish };
+    return { tank, fish, tests, changes, spawns, partSpawns, movesIn, events, allFish, care };
   });
 
   if (!data && !error) return <Loading />;
@@ -64,6 +73,11 @@ export default function TankScreen() {
 
   const fish = data.fish.filter((f) => !INACTIVE_STATUSES.includes(f.status));
   const latest = data.tests[0];
+  const today = todayISO();
+  // Treatments whose course is still running today.
+  const activeTreatments = data.care.filter(
+    (c) => c.kind === 'treatment' && c.course_days && daysBetween(c.logged_on, today) < c.course_days,
+  );
   const go = (pathname: string, params: Record<string, string> = {}) =>
     router.push({ pathname: pathname as never, params: { id, ...params } });
 
@@ -75,6 +89,19 @@ export default function TankScreen() {
         <InfoRow label="Name" value={tank.name} />
         <InfoRow label="Purpose" value={labelOf(TANK_PURPOSES, tank.purpose)} />
         <InfoRow label="Size" value={tank.size_gallons ? `${tank.size_gallons} gallons` : null} />
+        <InfoRow
+          label="Water changes"
+          value={
+            tank.water_change_every_days
+              ? `Every ${tank.water_change_every_days} days · ${dueLabel(
+                  data.changes[0]
+                    ? addDays(data.changes[0].changed_on, tank.water_change_every_days)
+                    : todayISO(),
+                  todayISO(),
+                ).toLowerCase()}`
+              : null
+          }
+        />
         {tank.notes ? <Muted>{tank.notes}</Muted> : null}
       </Card>
 
@@ -86,6 +113,13 @@ export default function TankScreen() {
           <Button title="QR code" icon={Icons.qr} variant="secondary" small onPress={() => go('/tanks/[id]/qr')} />
         </View>
       </View>
+      <Button
+        title="Remind me about this tank"
+        icon={Icons.reminder}
+        variant="secondary"
+        small
+        onPress={() => router.push({ pathname: '/reminders/edit', params: { tankId: id } })}
+      />
 
       <Section
         title={`Fish (${fish.length})`}
@@ -143,7 +177,7 @@ export default function TankScreen() {
         {latest ? (
           <Card>
             <Muted>Latest, {formatDate(latest.tested_on)}</Muted>
-            <InfoRow label="Temperature" value={latest.temperature_c !== null ? `${latest.temperature_c} °C` : null} />
+            <InfoRow label="Temperature" value={formatTemp(latest.temperature_c, unit)} />
             <InfoRow label="pH" value={latest.ph} />
             <InfoRow label="Ammonia" value={latest.ammonia !== null ? `${latest.ammonia} ppm` : null} />
             <InfoRow label="Nitrite" value={latest.nitrite !== null ? `${latest.nitrite} ppm` : null} />
@@ -159,8 +193,35 @@ export default function TankScreen() {
             icon={Icons.waterTest}
             key={t.id}
             title={formatDate(t.tested_on)}
-            subtitle={readingSummary(t)}
+            subtitle={readingSummary(t, unit)}
             onPress={() => go('/tanks/[id]/water-test', { testId: t.id })}
+          />
+        ))}
+      </Section>
+
+      <Section
+        title="Feeding and treatments"
+        action={<Button title="Log" icon={Icons.feeding} small onPress={() => go('/tanks/[id]/care')} />}>
+        {activeTreatments.map((c) => (
+          <Card key={`active-${c.id}`}>
+            <Body>{`Treating with ${c.item}`}</Body>
+            <Muted>{`Day ${daysBetween(c.logged_on, today) + 1} of ${c.course_days}${c.amount ? ` · ${c.amount}` : ''}`}</Muted>
+          </Card>
+        ))}
+        {data.care.length === 0 ? <Empty>Nothing logged yet.</Empty> : null}
+        {data.care.slice(0, 10).map((c) => (
+          <ListRow
+            icon={c.kind === 'treatment' ? Icons.treatment : Icons.feeding}
+            key={c.id}
+            title={`${c.item} · ${formatDate(c.logged_on)}`}
+            subtitle={[
+              c.amount,
+              c.course_days ? `${c.course_days}-day course` : null,
+              c.notes,
+            ]
+              .filter(Boolean)
+              .join(' · ')}
+            onPress={() => go('/tanks/[id]/care', { logId: c.id })}
           />
         ))}
       </Section>

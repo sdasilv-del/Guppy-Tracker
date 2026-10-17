@@ -5,12 +5,24 @@ export default function AppLayout() {
     <Stack screenOptions={{ headerBackTitle: 'Back' }}>
       <Stack.Screen name="(tabs)" options={{ headerShown: false, title: 'Home' }} />
       <Stack.Screen name="profile" options={{ title: 'Profile' }} />
+      <Stack.Screen name="export" options={{ title: 'Export and print' }} />
+      <Stack.Screen name="reminders/edit" options={{ title: 'Reminder' }} />
+      <Stack.Screen
+        name="reminders/actions"
+        options={{
+          headerShown: false,
+          presentation: 'formSheet',
+          sheetAllowedDetents: 'fitToContents',
+          sheetGrabberVisible: true,
+        }}
+      />
       <Stack.Screen name="scan" options={{ title: 'Scan tank QR', presentation: 'modal' }} />
       <Stack.Screen name="tanks/new" options={{ title: 'New tank' }} />
       <Stack.Screen name="tanks/[id]/index" options={{ title: 'Tank' }} />
       <Stack.Screen name="tanks/[id]/edit" options={{ title: 'Edit tank' }} />
       <Stack.Screen name="tanks/[id]/water-test" options={{ title: 'Water test' }} />
       <Stack.Screen name="tanks/[id]/water-change" options={{ title: 'Water change' }} />
+      <Stack.Screen name="tanks/[id]/care" options={{ title: 'Feeding or treatment' }} />
       <Stack.Screen name="tanks/[id]/qr" options={{ title: 'Tank QR code' }} />
       <Stack.Screen name="tanks/[id]/add-fish" options={{ title: 'Move fish here' }} />
       <Stack.Screen
@@ -33,6 +45,7 @@ export default function AppLayout() {
       <Stack.Screen name="fish/[id]/sale" options={{ title: 'Sale' }} />
       <Stack.Screen name="groups/index" options={{ title: 'Breeding groups' }} />
       <Stack.Screen name="groups/new" options={{ title: 'New breeding group' }} />
+      <Stack.Screen name="groups/pair" options={{ title: 'Trial pairing' }} />
       <Stack.Screen name="groups/[id]/index" options={{ title: 'Breeding group' }} />
       <Stack.Screen name="groups/[id]/edit" options={{ title: 'Edit group' }} />
       <Stack.Screen name="strains/[name]" options={{ title: 'Strain' }} />

@@ -3,11 +3,15 @@ import { decode } from 'base64-arraybuffer';
 import { supabase } from '@/lib/supabase';
 import type {
   BreedingGroup,
+  CareKind,
+  CareLog,
+  CustomReminder,
   Evaluation,
   FishTrait,
   Fish,
   FishMove,
   FishPhoto,
+  ReminderSnooze,
   Sale,
   ShowEntry,
   Spawn,
@@ -34,7 +38,7 @@ export async function getTank(id: string): Promise<Tank | null> {
   return must(await supabase.from('tanks').select('*').eq('id', id).maybeSingle());
 }
 
-export type TankInput = Pick<Tank, 'name' | 'size_gallons' | 'purpose' | 'notes'>;
+export type TankInput = Pick<Tank, 'name' | 'size_gallons' | 'purpose' | 'notes' | 'water_change_every_days'>;
 
 export async function createTank(input: TankInput): Promise<Tank> {
   return must(await supabase.from('tanks').insert(input).select().single());
@@ -75,6 +79,17 @@ export async function listWaterTests(tankId: string): Promise<WaterTest[]> {
   );
 }
 
+// Every water test across all tanks, newest first, for export.
+export async function listAllWaterTests(): Promise<WaterTest[]> {
+  return must(
+    await supabase
+      .from('water_tests')
+      .select('*')
+      .order('tested_on', { ascending: false })
+      .order('created_at', { ascending: false }),
+  );
+}
+
 export async function getWaterTest(id: string): Promise<WaterTest | null> {
   return must(await supabase.from('water_tests').select('*').eq('id', id).maybeSingle());
 }
@@ -101,6 +116,16 @@ export async function listWaterChanges(tankId: string): Promise<WaterChange[]> {
   );
 }
 
+// The most recent water change date for each tank, for reminders.
+export async function lastWaterChangeByTank(): Promise<Record<string, string>> {
+  const rows = must(
+    await supabase.from('water_changes').select('tank_id, changed_on').order('changed_on', { ascending: false }),
+  ) as Pick<WaterChange, 'tank_id' | 'changed_on'>[];
+  const out: Record<string, string> = {};
+  for (const r of rows) if (!out[r.tank_id]) out[r.tank_id] = r.changed_on;
+  return out;
+}
+
 export async function getWaterChange(id: string): Promise<WaterChange | null> {
   return must(await supabase.from('water_changes').select('*').eq('id', id).maybeSingle());
 }
@@ -112,8 +137,59 @@ export async function saveWaterChange(id: string | null, input: WaterChangeInput
   else must(await supabase.from('water_changes').insert(input));
 }
 
+// The same water change in several tanks, in one request.
+export async function addWaterChanges(inputs: WaterChangeInput[]): Promise<void> {
+  must(await supabase.from('water_changes').insert(inputs));
+}
+
 export async function deleteWaterChange(id: string): Promise<void> {
   must(await supabase.from('water_changes').delete().eq('id', id));
+}
+
+// Feeding and treatments ---------------------------------------------------
+
+export async function listCareLogs(tankId: string): Promise<CareLog[]> {
+  return must(
+    await supabase
+      .from('care_logs')
+      .select('*')
+      .eq('tank_id', tankId)
+      .order('logged_on', { ascending: false })
+      .order('created_at', { ascending: false }),
+  );
+}
+
+export async function getCareLog(id: string): Promise<CareLog | null> {
+  return must(await supabase.from('care_logs').select('*').eq('id', id).maybeSingle());
+}
+
+// Foods or medications used before, most recent first, so the form can offer them as one-tap choices.
+export async function recentCareItems(kind: CareKind): Promise<string[]> {
+  const rows = must(
+    await supabase
+      .from('care_logs')
+      .select('item')
+      .eq('kind', kind)
+      .order('created_at', { ascending: false })
+      .limit(200),
+  ) as Pick<CareLog, 'item'>[];
+  return [...new Set(rows.map((r) => r.item))].slice(0, 8);
+}
+
+export type CareLogInput = Omit<CareLog, 'id' | 'created_at'>;
+
+export async function saveCareLog(id: string | null, input: CareLogInput): Promise<void> {
+  if (id) must(await supabase.from('care_logs').update(input).eq('id', id));
+  else must(await supabase.from('care_logs').insert(input));
+}
+
+// The same feeding or dose in several tanks, in one request.
+export async function addCareLogs(inputs: CareLogInput[]): Promise<void> {
+  must(await supabase.from('care_logs').insert(inputs));
+}
+
+export async function deleteCareLog(id: string): Promise<void> {
+  must(await supabase.from('care_logs').delete().eq('id', id));
 }
 
 // Fish --------------------------------------------------------------------
@@ -487,6 +563,16 @@ export async function listShowEntries(fishId: string): Promise<ShowEntry[]> {
   );
 }
 
+export async function listAllShowEntries(): Promise<ShowEntry[]> {
+  return must(
+    await supabase
+      .from('show_entries')
+      .select('*')
+      .order('shown_on', { ascending: false })
+      .order('created_at', { ascending: false }),
+  );
+}
+
 export async function getShowEntry(id: string): Promise<ShowEntry | null> {
   return must(await supabase.from('show_entries').select('*').eq('id', id).maybeSingle());
 }
@@ -528,4 +614,37 @@ export async function saveSale(id: string | null, input: SaleInput): Promise<voi
 
 export async function deleteSale(id: string): Promise<void> {
   must(await supabase.from('sales').delete().eq('id', id));
+}
+
+// Reminders ---------------------------------------------------------------------
+
+export async function listCustomReminders(): Promise<CustomReminder[]> {
+  return must(await supabase.from('custom_reminders').select('*').order('due_on'));
+}
+
+export async function getCustomReminder(id: string): Promise<CustomReminder | null> {
+  return must(await supabase.from('custom_reminders').select('*').eq('id', id).maybeSingle());
+}
+
+export type CustomReminderInput = Omit<CustomReminder, 'id' | 'created_at'>;
+
+export async function saveCustomReminder(id: string | null, input: CustomReminderInput): Promise<void> {
+  if (id) must(await supabase.from('custom_reminders').update(input).eq('id', id));
+  else must(await supabase.from('custom_reminders').insert(input));
+}
+
+export async function deleteCustomReminder(id: string): Promise<void> {
+  must(await supabase.from('custom_reminders').delete().eq('id', id));
+}
+
+export async function listSnoozes(): Promise<ReminderSnooze[]> {
+  return must(await supabase.from('reminder_snoozes').select('reminder_key, snoozed_until'));
+}
+
+export async function snoozeReminder(key: string, until: string): Promise<void> {
+  must(
+    await supabase
+      .from('reminder_snoozes')
+      .upsert({ reminder_key: key, snoozed_until: until }, { onConflict: 'user_id,reminder_key' }),
+  );
 }
