@@ -20,7 +20,7 @@ import {
   updateGroup,
 } from '@/lib/db';
 import { formatDate, todayISO } from '@/lib/format';
-import { closeRelations } from '@/lib/kinship';
+import { closeRelations, formatInbreeding, makeKinship } from '@/lib/kinship';
 import { summarizeBatch } from '@/lib/spawn';
 import { useFocusData } from '@/lib/use-data';
 
@@ -67,6 +67,14 @@ export default function GroupScreen() {
   const tank = data.tanks.find((t) => t.id === group.tank_id);
   const traitNames = data.traits.filter((t) => data.traitIds.includes(t.id)).map((t) => t.name);
   const relations = closeRelations(members);
+  // Expected inbreeding of fry from each male and female in the group, highest first.
+  const kin = makeKinship(data.fish);
+  const pairs = members
+    .filter((m) => m.sex === 'M')
+    .flatMap((m) =>
+      members.filter((f) => f.sex === 'F').map((f) => ({ m, f, value: kin.offspringInbreeding(m.id, f.id) })),
+    )
+    .sort((a, b) => b.value - a.value);
   // Each member's latest record for each target trait, so the group can be judged against its goal.
   const targetSummary = (fishId: string) =>
     data.traitIds
@@ -138,6 +146,16 @@ export default function GroupScreen() {
             {relations.map((r) => (
               <Muted key={r}>{r}</Muted>
             ))}
+          </Card>
+        ) : null}
+        {pairs.length > 0 ? (
+          <Card>
+            <Body>Fry inbreeding</Body>
+            {pairs.slice(0, 6).map(({ m, f, value }) => (
+              <Muted key={`${m.id}-${f.id}`}>{`${m.fish_code} × ${f.fish_code}: ${formatInbreeding(value)}`}</Muted>
+            ))}
+            {pairs.length > 6 ? <Muted>{`and ${pairs.length - 6} more pairs`}</Muted> : null}
+            <Muted>From recorded parents only. 25% is a brother-sister cross, 12.5% half siblings.</Muted>
           </Card>
         ) : null}
         {members.length === 0 ? <Empty>No fish in this group.</Empty> : null}
