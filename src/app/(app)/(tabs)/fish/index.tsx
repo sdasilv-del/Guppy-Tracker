@@ -7,7 +7,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Button, ChipSelect, Empty, ErrorText, Field, Loading, Muted, Screen } from '@/components/ui';
 import { Icons } from '@/constants/icons';
 import { Spacing } from '@/constants/theme';
-import { FISH_STATUSES, INACTIVE_STATUSES, labelOf, SEXES, type Sex, TAIL_STANDARDS, type TailStandard } from '@/lib/constants';
+import { FISH_STATUSES, INACTIVE_STATUSES, labelOf, SEXES, type Sex, TAIL_OPTIONS, type TailStandard } from '@/lib/constants';
 import { latestPhotoPaths, listFish, listTanks, signedPhotoUrls } from '@/lib/db';
 import { formatAge } from '@/lib/format';
 import { useFocusData } from '@/lib/use-data';
@@ -108,7 +108,7 @@ export default function FishListScreen() {
       {showMore ? (
         <>
           <ChipSelect label="Sex" options={SEXES} value={filters.sex} onChange={(v) => set({ sex: v })} allowClear />
-          <ChipSelect label="Tail" options={TAIL_STANDARDS} value={filters.tail} onChange={(v) => set({ tail: v })} allowClear />
+          <ChipSelect label="Tail" options={TAIL_OPTIONS} value={filters.tail} onChange={(v) => set({ tail: v })} allowClear />
           {data?.strainOptions.length ? (
             <ChipSelect label="Strain" options={data.strainOptions} value={filters.strain} onChange={(v) => set({ strain: v })} allowClear />
           ) : null}

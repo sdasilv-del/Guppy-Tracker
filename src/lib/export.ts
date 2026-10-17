@@ -1,4 +1,4 @@
-import { BASE_COLOURS, COVER_COLOURS, FISH_STATUSES, labelOf, ORIGINS, SEXES, TAIL_STANDARDS } from '@/lib/constants';
+import { BASE_COLOURS, COVER_COLOURS, FISH_STATUSES, labelOf, ORIGINS, SEXES, TAIL_OPTIONS } from '@/lib/constants';
 import { formatDate, todayISO } from '@/lib/format';
 import { pedigreeColumns } from '@/lib/pedigree';
 import type { Fish, Profile, Sale, ShowEntry, Tank, WaterTest } from '@/lib/types';
@@ -43,7 +43,7 @@ export function fishCsv(fish: Fish[], tanks: Tank[]): string {
     fish.map((f) => {
       const c = colours(f);
       return [
-        f.fish_code, f.name, labelOf(SEXES, f.sex), labelOf(TAIL_STANDARDS, f.tail_standard), c.base, c.cover,
+        f.fish_code, f.name, labelOf(SEXES, f.sex), labelOf(TAIL_OPTIONS, f.tail_standard), c.base, c.cover,
         f.strain, f.generation, f.date_of_birth, labelOf(ORIGINS, f.origin), f.original_breeder,
         labelOf(FISH_STATUSES, f.status), f.tank_id ? tankCode[f.tank_id] : '', codeOf(byId, f.sire_id),
         codeOf(byId, f.dam_id), f.previous_codes.join('; '), f.notes,
@@ -104,7 +104,7 @@ const PAGE_STYLE = `
 `;
 
 function fishDetail(f: Fish) {
-  const tail = labelOf(TAIL_STANDARDS, f.tail_standard);
+  const tail = labelOf(TAIL_OPTIONS, f.tail_standard);
   return [f.strain, f.generation, tail].filter((v): v is string => !!v).map(escapeHtml).join(' · ');
 }
 
@@ -138,7 +138,7 @@ export function certificateHtml(fish: Fish, allFish: Fish[], profile: Profile | 
     ['Code', fish.fish_code],
     ['Name', fish.name ?? ''],
     ['Sex', labelOf(SEXES, fish.sex)],
-    ['Tail', labelOf(TAIL_STANDARDS, fish.tail_standard)],
+    ['Tail', labelOf(TAIL_OPTIONS, fish.tail_standard)],
     ['Base colour', c.base],
     ['Cover colours', c.cover.replace(/; /g, ', ')],
     ['Strain', fish.strain ?? ''],
@@ -193,7 +193,7 @@ export function showEntryListHtml(show: ShowKey, entries: ShowEntry[], allFish: 
         f?.fish_code ?? '',
         e.show_class ?? '',
         f ? labelOf(SEXES, f.sex) : '',
-        f ? labelOf(TAIL_STANDARDS, f.tail_standard) : '',
+        f ? labelOf(TAIL_OPTIONS, f.tail_standard) : '',
         [c.base, c.cover.replace(/; /g, ', ')].filter(Boolean).join(' / '),
         f?.strain ?? '',
         e.placement ?? '',

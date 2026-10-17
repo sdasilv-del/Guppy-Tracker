@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { FishPicker, fishLabel } from '@/components/fish-picker';
+import { TailGuide } from '@/components/tail-guide';
 import {
   Button,
   Card,
@@ -26,7 +27,7 @@ import {
   type Origin,
   SEXES,
   type Sex,
-  TAIL_STANDARDS,
+  TAIL_OPTIONS,
   type TailStandard,
 } from '@/lib/constants';
 import type { FishInput } from '@/lib/db';
@@ -138,6 +139,7 @@ export function FishForm({
   const [notes, setNotes] = useState(seed.notes ?? '');
   const [pickReason, setPickReason] = useState(seed.pick_reason ?? '');
   const [photo, setPhoto] = useState<PickedPhoto | null>(null);
+  const [showTailGuide, setShowTailGuide] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -159,7 +161,7 @@ export function FishForm({
 
   async function submit(action = onSubmit) {
     if (!tail) {
-      setError('Pick the tail standard.');
+      setError('Pick the tail standard, or "Not sure yet".');
       return;
     }
     setBusy(true);
@@ -222,12 +224,34 @@ export function FishForm({
         />
       ) : null}
       <ChipSelect label="Sex" options={SEXES} value={sex} onChange={(v) => v && setSex(v)} />
-      <ChipSelect label="Tail standard (IKGH)" options={TAIL_STANDARDS} value={tail} onChange={setTail} />
+      <ChipSelect label="Tail standard (IKGH)" options={TAIL_OPTIONS} value={tail} onChange={setTail} />
+      <Button
+        title={showTailGuide ? 'Hide tail pictures' : 'Not sure? See what each tail looks like'}
+        variant="secondary"
+        small
+        onPress={() => setShowTailGuide(!showTailGuide)}
+      />
+      {showTailGuide ? (
+        <TailGuide
+          value={tail}
+          onPick={(t) => {
+            setTail(t);
+            setShowTailGuide(false);
+          }}
+        />
+      ) : null}
+      {tail === 'U' ? (
+        <Muted>You can pick the tail later. The fish gets a new ID then, and this one stays searchable.</Muted>
+      ) : null}
       {sexChanges ? (
         <Muted>
           Changing sex or tail standard gives this fish a new ID. Its current ID {initial.fish_code} stays searchable.
         </Muted>
       ) : null}
+      <Muted>
+        Base colour is the body underneath. Cover colour is the colour and pattern on top. Not sure? Leave both blank
+        and add them later.
+      </Muted>
       <ChipSelect
         label="Base colour (IKGH)"
         options={BASE_COLOURS}

@@ -29,7 +29,7 @@ import {
   labelOf,
   ORIGINS,
   SEXES,
-  TAIL_STANDARDS,
+  TAIL_OPTIONS,
 } from '@/lib/constants';
 import { useAuth } from '@/lib/auth';
 import { isDisqualified } from '@/lib/ihs-reasons';
@@ -181,7 +181,7 @@ export default function FishScreen() {
       <Card>
         <InfoRow label="Name" value={fish.name} />
         <InfoRow label="Sex" value={labelOf(SEXES, fish.sex)} />
-        <InfoRow label="Tail standard" value={labelOf(TAIL_STANDARDS, fish.tail_standard)} />
+        <InfoRow label="Tail standard" value={labelOf(TAIL_OPTIONS, fish.tail_standard)} />
         <InfoRow label="Base colour" value={labelOf(BASE_COLOURS, fish.base_colour)} />
         <InfoRow
           label="Cover colour"
