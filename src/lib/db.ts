@@ -77,6 +77,17 @@ export async function listWaterTests(tankId: string): Promise<WaterTest[]> {
   );
 }
 
+// Every water test across all tanks, newest first, for export.
+export async function listAllWaterTests(): Promise<WaterTest[]> {
+  return must(
+    await supabase
+      .from('water_tests')
+      .select('*')
+      .order('tested_on', { ascending: false })
+      .order('created_at', { ascending: false }),
+  );
+}
+
 export async function getWaterTest(id: string): Promise<WaterTest | null> {
   return must(await supabase.from('water_tests').select('*').eq('id', id).maybeSingle());
 }
@@ -535,6 +546,16 @@ export async function listShowEntries(fishId: string): Promise<ShowEntry[]> {
       .from('show_entries')
       .select('*')
       .eq('fish_id', fishId)
+      .order('shown_on', { ascending: false })
+      .order('created_at', { ascending: false }),
+  );
+}
+
+export async function listAllShowEntries(): Promise<ShowEntry[]> {
+  return must(
+    await supabase
+      .from('show_entries')
+      .select('*')
       .order('shown_on', { ascending: false })
       .order('created_at', { ascending: false }),
   );

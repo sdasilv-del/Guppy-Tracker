@@ -170,6 +170,12 @@ export default function HomeScreen() {
           onPress={toggleNotifications}
         />
       ) : null}
+      <ListRow
+        icon={Icons.export}
+        title="Export and print"
+        subtitle="Spreadsheets and show entry lists"
+        onPress={() => router.push('/export')}
+      />
     </Screen>
   );
 }

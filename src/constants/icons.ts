@@ -30,5 +30,7 @@ export const Icons = {
   offline: { ios: 'icloud.slash', android: 'cloud_off' },
   waiting: { ios: 'icloud.and.arrow.up', android: 'cloud_upload' },
   warning: { ios: 'exclamationmark.triangle', android: 'warning' },
+  print: { ios: 'printer', android: 'print' },
+  export: { ios: 'square.and.arrow.up', android: 'ios_share' },
   chevron: { ios: 'chevron.right', android: 'chevron_right' },
 } satisfies Record<string, IconName>;
