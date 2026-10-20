@@ -78,7 +78,10 @@ export default function FishScreen() {
       listShowEntries(id),
       listSales(id),
     ]);
-    const urls = await signedPhotoUrls(photos.map((p) => p.storage_path));
+    const urls = await signedPhotoUrls([
+      ...photos.map((p) => p.storage_path),
+      ...evaluations.map((e) => e.photo_path).filter((p): p is string => !!p),
+    ]);
     return {
       fish: allFish.find((f) => f.id === id) ?? null,
       allFish,
@@ -287,9 +290,23 @@ export default function FishScreen() {
             ]
               .filter(Boolean)
               .join(' · ')}
+            right={
+              e.photo_path && data.urls[e.photo_path] ? (
+                <Image source={{ uri: data.urls[e.photo_path] }} style={styles.evalThumb} contentFit="cover" />
+              ) : undefined
+            }
             onPress={() => router.push({ pathname: '/fish/[id]/evaluation', params: { id, evalId: e.id } })}
           />
         ))}
+        {data.evaluations.length > 0 ? (
+          <Button
+            title="Score history with photos"
+            icon={Icons.strain}
+            variant="secondary"
+            small
+            onPress={() => router.push({ pathname: '/fish/[id]/scores', params: { id } })}
+          />
+        ) : null}
       </Section>
 
       <Section
@@ -423,4 +440,5 @@ const styles = StyleSheet.create({
   buttons: { flexDirection: 'row', gap: Spacing.two },
   half: { flex: 1 },
   link: { textDecorationLine: 'underline', fontWeight: '500' },
+  evalThumb: { width: 44, height: 44, borderRadius: 6 },
 });

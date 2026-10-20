@@ -42,6 +42,7 @@ export default function AppLayout() {
       <Stack.Screen name="fish/[id]/pedigree" options={{ title: 'Pedigree' }} />
       <Stack.Screen name="fish/[id]/trait" options={{ title: 'Trait' }} />
       <Stack.Screen name="fish/[id]/evaluation" options={{ title: 'IHS evaluation' }} />
+      <Stack.Screen name="fish/[id]/scores" options={{ title: 'Score history' }} />
       <Stack.Screen name="fish/[id]/show" options={{ title: 'Show entry' }} />
       <Stack.Screen name="fish/[id]/sale" options={{ title: 'Sale' }} />
       <Stack.Screen name="groups/index" options={{ title: 'Breeding groups' }} />

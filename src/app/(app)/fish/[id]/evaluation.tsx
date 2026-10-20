@@ -379,7 +379,11 @@ export default function EvaluationScreen() {
         <Field label="Placement or award" value={placement} onChangeText={setPlacement} placeholder="e.g. 1st, Best of Show" />
       ) : null}
 
-      {shownPhoto ? <Image source={{ uri: shownPhoto }} style={styles.photo} contentFit="cover" /> : null}
+      {shownPhoto ? (
+        <Image source={{ uri: shownPhoto }} style={styles.photo} contentFit="cover" />
+      ) : (
+        <Muted>Add a photo of the fish today, so this score can be checked against how it looked.</Muted>
+      )}
       <View style={styles.buttons}>
         <View style={{ flex: 1 }}>
           <Button title="Take photo" icon={Icons.camera} variant="secondary" small onPress={() => addPhoto('camera')} />
