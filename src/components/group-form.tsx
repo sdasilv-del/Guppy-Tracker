@@ -96,7 +96,7 @@ export function GroupForm({
 
   return (
     <>
-      <Field label="Name" value={name} onChangeText={setName} placeholder="Optional, e.g. Red delta line" />
+      <Field label="Name" value={name} onChangeText={setName} placeholder="Optional, e.g. Red triangle line" />
       <Field
         label="Goal"
         value={goal}

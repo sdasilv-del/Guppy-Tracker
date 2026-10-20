@@ -23,7 +23,7 @@ export type Sex = (typeof SEXES)[number]['value'];
 
 export const TAIL_STANDARDS = [
   { value: 'A1', label: 'A1 Fan tail' },
-  { value: 'A2', label: 'A2 Delta tail' },
+  { value: 'A2', label: 'A2 Triangle tail' },
   { value: 'A3', label: 'A3 Veil tail' },
   { value: 'A4', label: 'A4 Flag tail' },
   { value: 'A5', label: 'A5 Half moon tail' },
