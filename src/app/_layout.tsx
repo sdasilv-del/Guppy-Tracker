@@ -11,7 +11,9 @@ import { useEffect } from 'react';
 
 import { Colors, HeaderOptions } from '@/constants/theme';
 import { AuthProvider, useAuth } from '@/lib/auth';
+import { initCrashReporting, wrapRoot } from '@/lib/sentry';
 
+initCrashReporting();
 SplashScreen.preventAutoHideAsync();
 
 const theme = Colors.dark;
@@ -54,7 +56,7 @@ function RootStack({ fontsReady }: { fontsReady: boolean }) {
   );
 }
 
-export default function RootLayout() {
+function RootLayout() {
   const [loaded, error] = useFonts({
     CormorantGaramond_500Medium,
     CormorantGaramond_500Medium_Italic,
@@ -69,3 +71,5 @@ export default function RootLayout() {
     </ThemeProvider>
   );
 }
+
+export default wrapRoot(RootLayout);
