@@ -282,6 +282,12 @@ export async function latestPhotoPaths(fishIds: string[]): Promise<Record<string
   return out;
 }
 
+// Which fish have at least one photo, for the "records to finish" insight.
+export async function fishIdsWithPhotos(): Promise<Set<string>> {
+  const rows: Pick<FishPhoto, 'fish_id'>[] = must(await supabase.from('fish_photos').select('fish_id'));
+  return new Set(rows.map((r) => r.fish_id));
+}
+
 // Uploads a photo under the account's own folder and returns its storage path.
 export async function uploadPhoto(
   userId: string,
@@ -536,6 +542,18 @@ export async function listEvaluations(fishId: string): Promise<Evaluation[]> {
 // Every evaluation's score, for strain and generation stats.
 export async function listEvaluationScores(): Promise<Pick<Evaluation, 'fish_id' | 'sex' | 'total' | 'kind'>[]> {
   return must(await supabase.from('evaluations').select('fish_id, sex, total, kind'));
+}
+
+// Every evaluation without its sheet details, for the Home insights.
+export async function listEvaluationSummaries(): Promise<
+  Pick<Evaluation, 'id' | 'fish_id' | 'sex' | 'total' | 'kind' | 'evaluated_on' | 'event' | 'placement'>[]
+> {
+  return must(
+    await supabase
+      .from('evaluations')
+      .select('id, fish_id, sex, total, kind, evaluated_on, event, placement')
+      .order('evaluated_on', { ascending: false }),
+  );
 }
 
 export async function getEvaluation(id: string): Promise<Evaluation | null> {

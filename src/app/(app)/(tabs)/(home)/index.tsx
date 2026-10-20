@@ -9,14 +9,22 @@ import { Spacing } from '@/constants/theme';
 import { INACTIVE_STATUSES } from '@/lib/constants';
 import { useAuth } from '@/lib/auth';
 import {
+  fishIdsWithPhotos,
+  groupMembers,
   lastWaterChangeByTank,
+  listAllShowEntries,
+  listAllWaterTests,
   listCustomReminders,
+  listEvaluationSummaries,
   listFish,
+  listGroups,
+  listSales,
   listSnoozes,
   listSpawnEvents,
   listSpawns,
   listTanks,
 } from '@/lib/db';
+import { buildInsights, type Insight, type InsightKind } from '@/lib/insights';
 import { todayISO } from '@/lib/format';
 import {
   disableNotifications,
@@ -42,6 +50,36 @@ function Stat({ value, label, href, icon }: { value: number | undefined; label: 
         <Muted>{label}</Muted>
       </Card>
     </Pressable>
+  );
+}
+
+const INSIGHT_ICONS: Record<InsightKind, IconName> = {
+  water: Icons.waterTest,
+  losses: Icons.warning,
+  breeding: Icons.spawn,
+  inbreeding: Icons.pedigree,
+  top: Icons.show,
+  sales: Icons.sale,
+  crowded: Icons.tank,
+  records: Icons.edit,
+};
+
+function InsightList({ title, insights }: { title: string; insights: Insight[] }) {
+  const theme = useTheme();
+  if (insights.length === 0) return null;
+  return (
+    <Section title={title}>
+      {insights.map((i) => (
+        <ListRow
+          key={i.key}
+          icon={INSIGHT_ICONS[i.kind]}
+          title={i.title}
+          subtitle={i.detail}
+          right={i.warn ? <Icon name={Icons.warning} size={18} color={theme.danger} /> : undefined}
+          onPress={i.href ? () => router.push(i.href!) : undefined}
+        />
+      ))}
+    </Section>
   );
 }
 
@@ -101,10 +139,25 @@ export default function HomeScreen() {
       listSnoozes(),
     ]);
     const today = todayISO();
+    // Insights are extra: if any of these fail, Home still shows counts and reminders.
+    const insights = await Promise.all([
+      listAllWaterTests(),
+      listEvaluationSummaries(),
+      listAllShowEntries(),
+      listSales(),
+      listGroups(),
+      groupMembers(),
+      fishIdsWithPhotos(),
+    ])
+      .then(([waterTests, evaluations, shows, sales, groups, members, withPhotos]) =>
+        buildInsights({ today, tanks, fish, spawns, events, waterTests, evaluations, shows, sales, groups, members, withPhotos }),
+      )
+      .catch(() => [] as Insight[]);
     const reminders = buildReminders({ tanks, lastWaterChange, spawns, events, fish, custom, snoozes, today });
     scheduleReminderNotifications(reminders).catch(() => {});
     return {
       today,
+      insights,
       reminders,
       hasSchedules: tanks.some((t) => t.water_change_every_days),
       tanks: tanks.length,
@@ -174,6 +227,8 @@ export default function HomeScreen() {
         <Stat value={data?.forSale} label="For sale" href="/fish" icon={{ ios: 'tag', android: 'sell' }} />
       </View>
 
+      <InsightList title="Needs attention" insights={data?.insights.filter((i) => i.warn) ?? []} />
+
       {data ? (
         <Section title="Today">
           {due.length === 0 ? <Empty>Nothing due today.</Empty> : null}
@@ -200,6 +255,8 @@ export default function HomeScreen() {
           ))}
         </Section>
       ) : null}
+
+      <InsightList title="Insights" insights={data?.insights.filter((i) => !i.warn) ?? []} />
 
       {data && notifyOn !== null ? (
         <Button
