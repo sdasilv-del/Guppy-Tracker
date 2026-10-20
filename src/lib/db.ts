@@ -1,5 +1,6 @@
 import { decode } from 'base64-arraybuffer';
 
+import { type FishStatus, INACTIVE_STATUSES } from '@/lib/constants';
 import { supabase } from '@/lib/supabase';
 import type {
   BreedingGroup,
@@ -231,6 +232,13 @@ export async function deleteFish(id: string): Promise<void> {
 export async function moveFish(fishIds: string[], tankId: string | null): Promise<void> {
   if (fishIds.length === 0) return;
   must(await supabase.from('fish').update({ tank_id: tankId }).in('id', fishIds));
+}
+
+// Status changes for several fish at once. Sold, culled and deceased fish leave their tanks.
+export async function setFishStatus(fishIds: string[], status: FishStatus): Promise<void> {
+  if (fishIds.length === 0) return;
+  const patch = INACTIVE_STATUSES.includes(status) ? { status, tank_id: null } : { status };
+  must(await supabase.from('fish').update(patch).in('id', fishIds));
 }
 
 export async function listFishMoves(fishId: string): Promise<FishMove[]> {
@@ -610,6 +618,13 @@ export async function saveSale(id: string | null, input: SaleInput): Promise<voi
   }
   must(await supabase.from('sales').insert(input));
   must(await supabase.from('fish').update({ status: 'sold', tank_id: null }).eq('id', input.fish_id));
+}
+
+// One sale per fish, all on the same terms, e.g. a group of fry sold to one buyer.
+export async function addSales(inputs: SaleInput[]): Promise<void> {
+  if (inputs.length === 0) return;
+  must(await supabase.from('sales').insert(inputs));
+  must(await supabase.from('fish').update({ status: 'sold', tank_id: null }).in('id', inputs.map((i) => i.fish_id)));
 }
 
 export async function deleteSale(id: string): Promise<void> {

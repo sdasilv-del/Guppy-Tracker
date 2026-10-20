@@ -35,6 +35,7 @@ export default function AppLayout() {
         }}
       />
       <Stack.Screen name="fish/new" options={{ title: 'New fish' }} />
+      <Stack.Screen name="fish/bulk" options={{ title: 'Several fish' }} />
       <Stack.Screen name="fish/[id]/index" options={{ title: 'Fish' }} />
       <Stack.Screen name="fish/[id]/edit" options={{ title: 'Edit fish' }} />
       <Stack.Screen name="fish/[id]/move" options={{ title: 'Move fish' }} />

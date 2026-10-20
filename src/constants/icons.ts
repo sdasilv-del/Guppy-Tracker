@@ -29,6 +29,7 @@ export const Icons = {
   reminder: { ios: 'bell', android: 'notifications' },
   snooze: { ios: 'clock.arrow.circlepath', android: 'snooze' },
   done: { ios: 'checkmark.circle', android: 'check_circle' },
+  circle: { ios: 'circle', android: 'radio_button_unchecked' },
   offline: { ios: 'icloud.slash', android: 'cloud_off' },
   waiting: { ios: 'icloud.and.arrow.up', android: 'cloud_upload' },
   warning: { ios: 'exclamationmark.triangle', android: 'warning' },
