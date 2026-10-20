@@ -2,7 +2,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { Alert } from 'react-native';
 
 import { FishForm } from '@/components/fish-form';
-import { Button, ErrorText, Loading, Screen } from '@/components/ui';
+import { Button, DangerZone, ErrorText, Loading, Screen } from '@/components/ui';
 import { deleteFish, listFish, listTanks, updateFish } from '@/lib/db';
 import { useFocusData } from '@/lib/use-data';
 import { attempt } from '@/lib/alerts';
@@ -45,7 +45,9 @@ export default function EditFishScreen() {
           router.back();
         }}
       />
-      <Button title="Delete fish" variant="danger" onPress={confirmDelete} />
+      <DangerZone note="Deleting removes this fish and its photos for good.">
+        <Button title="Delete fish" variant="danger" onPress={confirmDelete} />
+      </DangerZone>
     </Screen>
   );
 }

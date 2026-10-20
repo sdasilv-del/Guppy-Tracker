@@ -236,12 +236,18 @@ export function Button({
   );
 }
 
+// A text field. An error shows in red under it, e.g. a required field left empty, and is read out
+// by screen readers as soon as it appears.
 export function Field({
   label,
   hint,
+  error,
   ...input
-}: TextInputProps & { label: string; hint?: string }) {
+}: TextInputProps & { label: string; hint?: string; error?: string | null }) {
   const theme = useTheme();
+  useEffect(() => {
+    if (error) AccessibilityInfo.announceForAccessibility(error);
+  }, [error]);
   return (
     <View style={styles.field}>
       <Text style={[styles.label, { color: theme.textSecondary }]}>{label}</Text>
@@ -252,17 +258,34 @@ export function Field({
         {...input}
         style={[
           styles.input,
-          { color: theme.text, borderColor: theme.border, backgroundColor: theme.background },
+          { color: theme.text, borderColor: error ? theme.danger : theme.border, backgroundColor: theme.background },
           input.multiline && styles.inputMultiline,
         ]}
       />
+      {error ? (
+        <Text accessibilityRole="alert" accessibilityLiveRegion="polite" style={[styles.muted, { color: theme.danger }]}>
+          {error}
+        </Text>
+      ) : null}
       {hint ? <Muted>{hint}</Muted> : null}
     </View>
   );
 }
 
-export function NumberField(props: TextInputProps & { label: string; hint?: string }) {
+export function NumberField(props: TextInputProps & { label: string; hint?: string; error?: string | null }) {
   return <Field keyboardType="decimal-pad" {...props} />;
+}
+
+// Delete and other for-good actions, kept at the bottom of an edit screen behind a thin line,
+// away from Save, with a short note on what is lost.
+export function DangerZone({ note, children }: { note: string; children: ReactNode }) {
+  const theme = useTheme();
+  return (
+    <View style={[styles.dangerZone, { borderTopColor: theme.divider }]}>
+      <Muted>{note}</Muted>
+      {children}
+    </View>
+  );
 }
 
 type Option<T> = { value: T; label: string };
@@ -583,6 +606,12 @@ const styles = StyleSheet.create({
     minHeight: 46,
   },
   inputMultiline: { minHeight: 88, textAlignVertical: 'top' },
+  dangerZone: {
+    marginTop: Spacing.five,
+    paddingTop: Spacing.three,
+    gap: Spacing.two,
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
   segments: { flexDirection: 'row', borderBottomWidth: StyleSheet.hairlineWidth },
   segment: {

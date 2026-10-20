@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 
-import { addDays, buildReminders, daysBetween, dueLabel } from '@/lib/reminders';
+import { addDays, buildReminders, daysBetween, dueLabel, scheduleSummary } from '@/lib/reminders';
 import type { CustomReminder } from '@/lib/types';
 
 import { makeEvent, makeFish, makeSpawn, makeTank } from './fixtures';
@@ -157,5 +157,25 @@ describe('dueLabel', () => {
     expect(dueLabel('2026-10-25', TODAY)).toBe('Due in 5 days');
     expect(dueLabel('2026-10-19', TODAY)).toBe('1 day overdue');
     expect(dueLabel('2026-10-10', TODAY)).toBe('10 days overdue');
+  });
+});
+
+describe('scheduleSummary', () => {
+  test('a one-off reminder', () => {
+    expect(scheduleSummary('2026-10-21', null, TODAY)).toBe('Once on 21 Oct');
+    expect(scheduleSummary('2026-10-21', 0, TODAY)).toBe('Once on 21 Oct');
+  });
+
+  test('repeats in days and weeks', () => {
+    expect(scheduleSummary('2026-10-21', 1, TODAY)).toBe('Every day from 21 Oct');
+    expect(scheduleSummary('2026-10-21', 2, TODAY)).toBe('Every 2 days from 21 Oct');
+    expect(scheduleSummary('2026-10-21', 7, TODAY)).toBe('Every week from 21 Oct');
+    expect(scheduleSummary('2026-10-21', 14, TODAY)).toBe('Every 2 weeks from 21 Oct');
+    expect(scheduleSummary('2026-10-21', 10, TODAY)).toBe('Every 10 days from 21 Oct');
+  });
+
+  test('adds the year only when it is not this year', () => {
+    expect(scheduleSummary('2027-01-03', null, TODAY)).toBe('Once on 3 Jan 2027');
+    expect(scheduleSummary('2027-01-03', 3, TODAY)).toBe('Every 3 days from 3 Jan 2027');
   });
 });

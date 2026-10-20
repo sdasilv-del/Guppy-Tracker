@@ -2,7 +2,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { Alert } from 'react-native';
 
 import { GroupForm } from '@/components/group-form';
-import { Button, ErrorText, Loading, Screen } from '@/components/ui';
+import { Button, DangerZone, ErrorText, Loading, Screen } from '@/components/ui';
 import {
   deleteGroup,
   getGroup,
@@ -72,7 +72,9 @@ export default function EditGroupScreen() {
           router.back();
         }}
       />
-      <Button title="Delete group" variant="danger" onPress={confirmDelete} />
+      <DangerZone note="Deleting removes this group for good. Its spawns and fish are kept.">
+        <Button title="Delete group" variant="danger" onPress={confirmDelete} />
+      </DangerZone>
     </Screen>
   );
 }

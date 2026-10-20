@@ -1,6 +1,6 @@
 import type { Href } from 'expo-router';
 
-import { fromISODate, toISODate } from '@/lib/format';
+import { formatDate, fromISODate, toISODate } from '@/lib/format';
 import { summarizeBatch } from '@/lib/spawn';
 import type { CustomReminder, Fish, ReminderSnooze, Spawn, SpawnEvent, Tank } from '@/lib/types';
 
@@ -126,4 +126,20 @@ export function dueLabel(due: string, today: string): string {
   if (days === 1) return 'Due tomorrow';
   if (days > 1) return `Due in ${days} days`;
   return days === -1 ? '1 day overdue' : `${-days} days overdue`;
+}
+
+// A plain-English line for a reminder's schedule, shown before saving, e.g. "Every 2 days from 21 Oct"
+// or "Once on 21 Oct". The year is only added when it isn't this year.
+export function scheduleSummary(dueOn: string, repeatEveryDays: number | null, today: string): string {
+  const date = dueOn.slice(0, 4) === today.slice(0, 4) ? formatDate(dueOn).replace(/ \d{4}$/, '') : formatDate(dueOn);
+  if (!repeatEveryDays || repeatEveryDays < 1) return `Once on ${date}`;
+  const every =
+    repeatEveryDays === 1
+      ? 'Every day'
+      : repeatEveryDays === 7
+        ? 'Every week'
+        : repeatEveryDays % 7 === 0
+          ? `Every ${repeatEveryDays / 7} weeks`
+          : `Every ${repeatEveryDays} days`;
+  return `${every} from ${date}`;
 }
