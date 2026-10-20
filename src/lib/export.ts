@@ -145,12 +145,18 @@ export function certificateHtml(
   fish: Fish,
   allFish: Fish[],
   profile: Profile | null,
-  extras: { photo?: string | null; best?: Evaluation | null } = {},
+  extras: { photo?: string | null; best?: Evaluation | null; results?: Map<string, string> } = {},
 ): string {
   const byId = Object.fromEntries(allFish.map((f) => [f.id, f]));
   const columns = pedigreeColumns(fish, byId, CERT_DEPTH);
   const rowsTotal = columns[CERT_DEPTH].length;
   const c = colours(fish);
+
+  // An ancestor's best score and placing, so a buyer sees how the line has shown.
+  const result = (f: Fish) => {
+    const text = extras.results?.get(f.id);
+    return text ? `<div>${escapeHtml(text)}</div>` : '';
+  };
 
   const rows: string[] = [];
   for (let r = 0; r < rowsTotal; r++) {
@@ -162,7 +168,7 @@ export function certificateHtml(
       const f = columns[g][i];
       const role = g === 0 ? '' : i % 2 === 0 ? 'Sire' : 'Dam';
       cells += f
-        ? `<td rowspan="${span}"><div class="muted">${role}</div><div class="code">${escapeHtml(f.fish_code)}</div><div class="muted">${fishDetail(f)}</div></td>`
+        ? `<td rowspan="${span}"><div class="muted">${role}</div><div class="code">${escapeHtml(f.fish_code)}</div><div class="muted">${fishDetail(f)}</div>${result(f)}</td>`
         : `<td rowspan="${span}" class="muted">${role} unknown</td>`;
     }
     rows.push(`<tr>${cells}</tr>`);

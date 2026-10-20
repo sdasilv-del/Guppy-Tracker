@@ -37,6 +37,8 @@ import {
   addFishPhoto,
   deleteFishPhoto,
   groupIdsForFish,
+  listAllShowEntries,
+  listEvaluationSummaries,
   listEvaluations,
   listSales,
   listShowEntries,
@@ -56,6 +58,7 @@ import { formatAge, formatDate } from '@/lib/format';
 import { copiesLabel, inferredCarrier } from '@/lib/genetics';
 import type { FishPhoto } from '@/lib/types';
 import { formatInbreeding, makeKinship } from '@/lib/kinship';
+import { bestPlacings, bestScores, littermates, scoreLabel } from '@/lib/scores';
 import { useFocusData } from '@/lib/use-data';
 
 export default function FishScreen() {
@@ -66,8 +69,10 @@ export default function FishScreen() {
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const { data, error, reload } = useFocusData(async () => {
-    const [allFish, tanks, photos, moves, spawns, groups, groupIds, traitRecords, evaluations, traits, shows, sales, genes, geneRecords] =
-      await Promise.all([
+    const [
+      allFish, tanks, photos, moves, spawns, groups, groupIds, traitRecords, evaluations, traits, shows, sales, genes, geneRecords,
+      allScores, allShows,
+    ] = await Promise.all([
       listFish(),
       listTanks(),
       listFishPhotos(id),
@@ -82,6 +87,8 @@ export default function FishScreen() {
       listSales(id),
       listGenes(),
       listFishGenes(),
+      listEvaluationSummaries(),
+      listAllShowEntries(),
     ]);
     const urls = await signedPhotoUrls([
       ...photos.map((p) => p.storage_path),
@@ -102,6 +109,8 @@ export default function FishScreen() {
       sales,
       genes,
       geneRecords,
+      bestScores: bestScores(allScores),
+      bestPlacings: bestPlacings(allShows),
       traitNames: Object.fromEntries(traits.map((t) => [t.id, t.name])),
     };
   });
@@ -120,6 +129,8 @@ export default function FishScreen() {
   const kin = makeKinship(data.allFish);
   const sire = fish.sire_id ? byId[fish.sire_id] : null;
   const dam = fish.dam_id ? byId[fish.dam_id] : null;
+  const siblings = littermates(fish, data.allFish);
+  const scoredSiblings = siblings.filter((f) => data.bestScores.has(f.id)).length;
   const offspring = data.allFish.filter((f) => f.sire_id === id || f.dam_id === id);
   const fromSpawn = fish.spawn_id ? data.spawns.find((s) => s.id === fish.spawn_id) : null;
   const parentOf = data.spawns.filter((s) => s.sire_id === id || s.dam_id === id);
@@ -404,6 +415,30 @@ export default function FishScreen() {
           <ListRow title="Dam · Unknown" />
         )}
       </Section>
+
+      {siblings.length > 0 ? (
+        <Section title={`Littermates (${siblings.length})`}>
+          <Muted>
+            {scoredSiblings === 0
+              ? 'None scored yet. Sold fish stay here, so a score from a fish that was auctioned still counts for this litter.'
+              : `${scoredSiblings} of ${siblings.length} scored. Sold fish are included.`}
+          </Muted>
+          {siblings.map((f) => {
+            const best = data.bestScores.get(f.id);
+            return (
+              <ListRow
+                icon={Icons.fish}
+                key={f.id}
+                title={best ? `${f.fish_code} · ${scoreLabel(best)}` : f.fish_code}
+                subtitle={[labelOf(SEXES, f.sex), labelOf(FISH_STATUSES, f.status), data.bestPlacings.get(f.id)]
+                  .filter(Boolean)
+                  .join(' · ')}
+                onPress={() => openFish(f.id)}
+              />
+            );
+          })}
+        </Section>
+      ) : null}
 
       {data.groups.length > 0 ? (
         <Section title="Breeding groups">
