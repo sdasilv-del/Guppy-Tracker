@@ -6,6 +6,7 @@ export default function AppLayout() {
       <Stack.Screen name="(tabs)" options={{ headerShown: false, title: 'Home' }} />
       <Stack.Screen name="profile" options={{ title: 'Profile' }} />
       <Stack.Screen name="export" options={{ title: 'Export and print' }} />
+      <Stack.Screen name="points" options={{ title: 'Season points' }} />
       <Stack.Screen name="reminders/edit" options={{ title: 'Reminder' }} />
       <Stack.Screen
         name="reminders/actions"
