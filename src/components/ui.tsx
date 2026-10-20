@@ -316,6 +316,40 @@ export function ChipSelect<T extends string | number>({
   );
 }
 
+// A row of tabs inside a screen, such as Overview, Scores, Family and History on a fish.
+export function SegmentedTabs<T extends string>({
+  options,
+  value,
+  onChange,
+}: {
+  options: readonly Option<T>[];
+  value: T;
+  onChange: (value: T) => void;
+}) {
+  const theme = useTheme();
+  return (
+    <View accessibilityRole="tablist" style={[styles.segments, { backgroundColor: theme.backgroundElement }]}>
+      {options.map((o) => {
+        const selected = o.value === value;
+        return (
+          <Pressable
+            key={o.value}
+            accessibilityRole="tab"
+            accessibilityState={{ selected }}
+            onPress={() => onChange(o.value)}
+            style={[styles.segment, selected && { backgroundColor: theme.accent }]}>
+            <Text
+              numberOfLines={1}
+              style={[styles.segmentText, { color: selected ? theme.onAccent : theme.text }]}>
+              {o.label}
+            </Text>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
 export function MultiChipSelect<T extends string | number>({
   label,
   options,
@@ -548,6 +582,9 @@ const styles = StyleSheet.create({
   },
   inputMultiline: { minHeight: 88, textAlignVertical: 'top' },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
+  segments: { flexDirection: 'row', borderRadius: 12, padding: 3, gap: 3 },
+  segment: { flex: 1, minHeight: 40, borderRadius: 9, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 },
+  segmentText: { fontSize: 14, fontWeight: '600' },
   chip: { borderWidth: 1, borderRadius: 20, paddingHorizontal: 14, minHeight: 40, justifyContent: 'center' },
   chipText: { fontSize: 14, fontWeight: '500' },
   toggleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
