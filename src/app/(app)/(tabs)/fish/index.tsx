@@ -4,7 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { Button, ChipSelect, Empty, ErrorText, Field, Icon, Loading, Muted, Screen } from '@/components/ui';
+import { Button, ChipSelect, Empty, ErrorText, Field, Icon, ListScreen, Loading, Muted } from '@/components/ui';
 import { Icons } from '@/constants/icons';
 import { Spacing } from '@/constants/theme';
 import { FISH_STATUSES, INACTIVE_STATUSES, labelOf, SEXES, type Sex, TAIL_OPTIONS, type TailStandard } from '@/lib/constants';
@@ -68,7 +68,7 @@ export default function FishListScreen() {
       })
       .catch(() => {});
   }, []);
-  const { data, error } = useFocusData(async () => {
+  const { data, error, reload } = useFocusData(async () => {
     const [fish, tanks] = await Promise.all([listFish(), listTanks()]);
     const paths = await latestPhotoPaths(fish.map((f) => f.id));
     const urls = await signedPhotoUrls(Object.values(paths));
@@ -105,8 +105,8 @@ export default function FishListScreen() {
 
   if (!data && !error) return <Loading />;
 
-  return (
-    <Screen>
+  const header = (
+    <>
       <Button title="Add a fish" icon={Icons.add} onPress={() => router.push('/fish/new')} />
       <ErrorText message={error} />
       <Field label="Search" value={query} onChangeText={setQuery} placeholder="ID, name or strain" autoCapitalize="none" />
@@ -155,12 +155,19 @@ export default function FishListScreen() {
       ) : shown.length > 1 ? (
         <Button title="Select several" icon={Icons.done} variant="secondary" small onPress={() => setSelecting(true)} />
       ) : null}
-      {shown.length === 0 ? (
-        <Empty>{data?.fish.length ? 'No fish match.' : 'No fish yet. Add your first fish.'}</Empty>
-      ) : null}
-      {shown.map((f) => (
+    </>
+  );
+
+  return (
+    <ListScreen
+      header={header}
+      data={shown}
+      keyExtractor={(f) => f.id}
+      extraData={[selecting, selected]}
+      onRefresh={reload}
+      empty={<Empty>{data?.fish.length ? 'No fish match.' : 'No fish yet. Add your first fish.'}</Empty>}
+      renderItem={({ item: f }) => (
         <Pressable
-          key={f.id}
           onPress={() => (selecting ? toggle(f.id) : router.push({ pathname: '/fish/[id]', params: { id: f.id } }))}
           onLongPress={() => {
             setSelecting(true);
@@ -196,8 +203,8 @@ export default function FishListScreen() {
             />
           ) : null}
         </Pressable>
-      ))}
-    </Screen>
+      )}
+    />
   );
 }
 

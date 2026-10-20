@@ -1,0 +1,34 @@
+name: Checks
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - uses: oven-sh/setup-bun@v2
+
+      # Expo writes this file on first start; it's gitignored, so CI makes it for the type check.
+      - name: Expo types
+        run: echo '/// <reference types="expo/types" />' > expo-env.d.ts
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      - name: Lint
+        run: npx eslint src
+
+      - name: Unit tests
+        run: bun test

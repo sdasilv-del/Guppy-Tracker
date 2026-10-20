@@ -270,13 +270,50 @@ function wentOnline() {
   if (state.pending.length > 0) void syncNow();
 }
 
+// Reads are also kept in memory for a short while, so screens that need the same lists (every fish,
+// every score) share one download instead of each fetching it again. Any save clears it, and so does
+// dragging a screen down to reload, so nothing stale lingers after a change.
+const MEMORY_MS = 30_000;
+type Saved = { status: number; statusText: string; headers: Record<string, string>; body: string };
+const memory = new Map<string, { at: number; read: Promise<Saved> }>();
+
+export function clearReadCache() {
+  memory.clear();
+}
+
+async function memoryRead(url: string, init: RequestInit | undefined): Promise<Response> {
+  const headers = plainHeaders(init);
+  const key = `${headers.authorization ?? ''} ${headers.accept ?? ''} ${headers.prefer ?? ''} ${url}`;
+  const hit = memory.get(key);
+  if (!hit || Date.now() - hit.at > MEMORY_MS) {
+    const read = cachedRead('GET', url, init, null).then(async (res) => {
+      const keep: Record<string, string> = {};
+      res.headers.forEach((value, name) => {
+        keep[name] = value;
+      });
+      const saved = { status: res.status, statusText: res.statusText, headers: keep, body: await res.text() };
+      // Only good, live answers are shared; errors and offline copies are fetched again next time.
+      if (!res.ok || state.offline) memory.delete(key);
+      return saved;
+    });
+    memory.set(key, { at: Date.now(), read });
+    read.catch(() => memory.delete(key));
+    const saved = await read;
+    return rebuild(saved.status, saved.statusText, saved.headers, saved.body);
+  }
+  const saved = await hit.read;
+  return rebuild(saved.status, saved.statusText, saved.headers, saved.body);
+}
+
 export const offlineFetch: typeof fetch = async (input, init) => {
   const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
   const method = (init?.method ?? 'GET').toUpperCase();
   const body = typeof init?.body === 'string' ? init.body : null;
 
   if (url.includes('/rest/v1/')) {
-    if (method === 'GET' || method === 'HEAD') return cachedRead(method, url, init, null);
+    if (method === 'GET') return memoryRead(url, init);
+    if (method === 'HEAD') return cachedRead(method, url, init, null);
+    clearReadCache();
     const prefer = plainHeaders(init).prefer ?? '';
     const needsReply = prefer.includes('return=representation') || url.includes('/rest/v1/rpc/');
     if (needsReply) return onlineOnly(url, init);
@@ -284,7 +321,10 @@ export const offlineFetch: typeof fetch = async (input, init) => {
   }
   // Signed photo links: reusing the saved ones lets the image cache show photos offline.
   if (url.includes('/storage/v1/object/sign/')) return cachedRead(method, url, init, body);
-  if (url.includes('/storage/v1/')) return onlineOnly(url, init);
+  if (url.includes('/storage/v1/')) {
+    clearReadCache();
+    return onlineOnly(url, init);
+  }
   try {
     return await baseFetch(input, init);
   } catch (e) {
@@ -348,7 +388,10 @@ async function runSync() {
     setState({ syncing: false });
     scheduleRetry();
   }
-  if (sent > 0) syncedListeners.forEach((l) => l());
+  if (sent > 0) {
+    clearReadCache();
+    syncedListeners.forEach((l) => l());
+  }
 }
 
 // Puts saves the server turned down back in the queue, e.g. after fixing what blocked them.
@@ -369,6 +412,7 @@ export async function discardFailed() {
 // On sign-out, forget everything saved for that account so the next person can't see or send it.
 export async function clearOfflineData() {
   await loaded;
+  clearReadCache();
   setState({ pending: [], failed: [], offline: false });
   scheduleRetry();
   const keys = await AsyncStorage.getAllKeys();

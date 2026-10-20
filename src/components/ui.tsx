@@ -3,8 +3,11 @@ import { type ReactNode, useEffect, useState } from 'react';
 import {
   AccessibilityInfo,
   ActivityIndicator,
+  FlatList,
+  type ListRenderItem,
   Platform,
   Pressable,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Switch,
@@ -21,10 +24,39 @@ import { SyncBanner } from '@/components/sync-banner';
 import { type IconName, Icons } from '@/constants/icons';
 import { Spacing } from '@/constants/theme';
 import { formatDate, fromISODate, toISODate } from '@/lib/format';
+import { clearReadCache } from '@/lib/offline';
 import { useTheme } from '@/hooks/use-theme';
 
-export function Screen({ children, scroll = true }: { children: ReactNode; scroll?: boolean }) {
+// Drag-down-to-reload for a screen, with the spinner shown until the reload finishes.
+function useRefresh(onRefresh?: () => Promise<unknown>) {
   const theme = useTheme();
+  const [refreshing, setRefreshing] = useState(false);
+  if (!onRefresh) return undefined;
+  return (
+    <RefreshControl
+      refreshing={refreshing}
+      tintColor={theme.accent}
+      colors={[theme.accent]}
+      onRefresh={() => {
+        setRefreshing(true);
+        clearReadCache();
+        onRefresh().finally(() => setRefreshing(false));
+      }}
+    />
+  );
+}
+
+export function Screen({
+  children,
+  scroll = true,
+  onRefresh,
+}: {
+  children: ReactNode;
+  scroll?: boolean;
+  onRefresh?: () => Promise<unknown>;
+}) {
+  const theme = useTheme();
+  const refreshControl = useRefresh(onRefresh);
   if (!scroll) {
     return (
       <View style={[styles.screen, { backgroundColor: theme.background }]}>
@@ -42,10 +74,57 @@ export function Screen({ children, scroll = true }: { children: ReactNode; scrol
       contentInsetAdjustmentBehavior="automatic"
       // Keeps the focused field above the keyboard; dragging the page down puts the keyboard away.
       automaticallyAdjustKeyboardInsets
-      keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}>
+      keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
+      refreshControl={refreshControl}>
       <SyncBanner />
       {children}
     </ScrollView>
+  );
+}
+
+// A screen that is mostly one long list. Only the rows on screen are drawn, so it stays quick with
+// thousands of fish. Anything above the list (buttons, search, filters) goes in header.
+export function ListScreen<T>({
+  header,
+  data,
+  renderItem,
+  keyExtractor,
+  empty,
+  onRefresh,
+  extraData,
+}: {
+  header?: ReactNode;
+  data: readonly T[];
+  renderItem: ListRenderItem<T>;
+  keyExtractor: (item: T) => string;
+  empty?: ReactNode;
+  onRefresh?: () => Promise<unknown>;
+  extraData?: unknown;
+}) {
+  const theme = useTheme();
+  const refreshControl = useRefresh(onRefresh);
+  return (
+    <FlatList
+      style={{ backgroundColor: theme.background }}
+      contentContainerStyle={styles.screen}
+      contentInsetAdjustmentBehavior="automatic"
+      keyboardShouldPersistTaps="handled"
+      keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
+      data={data}
+      renderItem={renderItem}
+      keyExtractor={keyExtractor}
+      extraData={extraData}
+      ListHeaderComponent={
+        <View style={styles.listHeader}>
+          <SyncBanner />
+          {header}
+        </View>
+      }
+      ListEmptyComponent={empty ? <>{empty}</> : null}
+      initialNumToRender={12}
+      windowSize={7}
+      refreshControl={refreshControl}
+    />
   );
 }
 
@@ -233,6 +312,40 @@ export function ChipSelect<T extends string | number>({
           />
         ))}
       </View>
+    </View>
+  );
+}
+
+// A row of tabs inside a screen, such as Overview, Scores, Family and History on a fish.
+export function SegmentedTabs<T extends string>({
+  options,
+  value,
+  onChange,
+}: {
+  options: readonly Option<T>[];
+  value: T;
+  onChange: (value: T) => void;
+}) {
+  const theme = useTheme();
+  return (
+    <View accessibilityRole="tablist" style={[styles.segments, { backgroundColor: theme.backgroundElement }]}>
+      {options.map((o) => {
+        const selected = o.value === value;
+        return (
+          <Pressable
+            key={o.value}
+            accessibilityRole="tab"
+            accessibilityState={{ selected }}
+            onPress={() => onChange(o.value)}
+            style={[styles.segment, selected && { backgroundColor: theme.accent }]}>
+            <Text
+              numberOfLines={1}
+              style={[styles.segmentText, { color: selected ? theme.onAccent : theme.text }]}>
+              {o.label}
+            </Text>
+          </Pressable>
+        );
+      })}
     </View>
   );
 }
@@ -439,6 +552,7 @@ export function Empty({ children }: { children: ReactNode }) {
 
 const styles = StyleSheet.create({
   screen: { padding: Spacing.three, gap: Spacing.three, paddingBottom: Spacing.six, flexGrow: 1 },
+  listHeader: { gap: Spacing.three },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   heading: { fontSize: 20, fontWeight: '700' },
   muted: { fontSize: 14, lineHeight: 20 },
@@ -468,6 +582,9 @@ const styles = StyleSheet.create({
   },
   inputMultiline: { minHeight: 88, textAlignVertical: 'top' },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
+  segments: { flexDirection: 'row', borderRadius: 12, padding: 3, gap: 3 },
+  segment: { flex: 1, minHeight: 40, borderRadius: 9, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 },
+  segmentText: { fontSize: 14, fontWeight: '600' },
   chip: { borderWidth: 1, borderRadius: 20, paddingHorizontal: 14, minHeight: 40, justifyContent: 'center' },
   chipText: { fontSize: 14, fontWeight: '500' },
   toggleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },

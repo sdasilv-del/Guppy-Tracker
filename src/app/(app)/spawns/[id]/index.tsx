@@ -15,7 +15,7 @@ import { useFocusData } from '@/lib/use-data';
 
 export default function SpawnScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { data, error } = useFocusData(async () => {
+  const { data, error, reload } = useFocusData(async () => {
     const spawn = await getSpawn(id);
     const [group, events, picks, fish, tanks, genes, geneRecords] = await Promise.all([
       spawn?.group_id ? getGroup(spawn.group_id) : null,
@@ -51,7 +51,7 @@ export default function SpawnScreen() {
   const log = [...data.events].reverse();
 
   return (
-    <Screen>
+    <Screen onRefresh={reload}>
       <Stack.Screen options={{ title: spawn.spawn_code }} />
 
       <Card style={styles.batch}>

@@ -324,13 +324,28 @@ export async function deleteFishPhoto(photo: FishPhoto): Promise<void> {
   must(await supabase.from('fish_photos').delete().eq('id', photo.id));
 }
 
-// Photos are private, so screens show them through short-lived signed links.
+// Photos are private, so screens show them through short-lived signed links. Each link is reused
+// for half its life: fewer requests, and the same link lets the image cache show the photo
+// without downloading it again.
+const SIGNED_SECONDS = 3600;
+const signed = new Map<string, { url: string; at: number }>();
+
 export async function signedPhotoUrls(paths: string[]): Promise<Record<string, string>> {
-  if (paths.length === 0) return {};
-  const { data, error } = await supabase.storage.from('fish-photos').createSignedUrls(paths, 3600);
-  if (error) throw new Error(error.message);
   const out: Record<string, string> = {};
-  for (const item of data) if (item.path && item.signedUrl) out[item.path] = item.signedUrl;
+  const fresh = Date.now() - (SIGNED_SECONDS * 1000) / 2;
+  const missing = [...new Set(paths)].filter((p) => {
+    const hit = signed.get(p);
+    if (hit && hit.at > fresh) out[p] = hit.url;
+    return !out[p];
+  });
+  if (missing.length === 0) return out;
+  const { data, error } = await supabase.storage.from('fish-photos').createSignedUrls(missing, SIGNED_SECONDS);
+  if (error) throw new Error(error.message);
+  for (const item of data) {
+    if (!item.path || !item.signedUrl) continue;
+    out[item.path] = item.signedUrl;
+    signed.set(item.path, { url: item.signedUrl, at: Date.now() });
+  }
   return out;
 }
 
