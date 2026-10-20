@@ -679,6 +679,20 @@ export async function deleteSale(id: string): Promise<void> {
   must(await supabase.from('sales').delete().eq('id', id));
 }
 
+// The last few different buyers and the currency of the latest sale, offered on a new sale.
+export async function recentSaleTerms(limit = 5): Promise<{ buyers: string[]; currency: string | null }> {
+  const rows: Pick<Sale, 'buyer' | 'currency'>[] = must(
+    await supabase.from('sales').select('buyer, currency').order('created_at', { ascending: false }).limit(50),
+  );
+  const buyers: string[] = [];
+  for (const r of rows) {
+    const b = r.buyer?.trim();
+    if (b && !buyers.includes(b)) buyers.push(b);
+    if (buyers.length === limit) break;
+  }
+  return { buyers, currency: rows[0]?.currency ?? null };
+}
+
 // Reminders ---------------------------------------------------------------------
 
 export async function listCustomReminders(): Promise<CustomReminder[]> {

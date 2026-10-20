@@ -2,7 +2,18 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Alert } from 'react-native';
 
-import { Button, ChipSelect, DateField, ErrorText, Field, Loading, Muted, NumberField, Screen } from '@/components/ui';
+import {
+  Button,
+  ChipSelect,
+  DangerZone,
+  DateField,
+  ErrorText,
+  Field,
+  Loading,
+  Muted,
+  NumberField,
+  Screen,
+} from '@/components/ui';
 import { attempt } from '@/lib/alerts';
 import {
   deleteCustomReminder,
@@ -14,7 +25,7 @@ import {
   setWaterChangeSchedule,
 } from '@/lib/db';
 import { blankToNull, numberText, parseNumber, todayISO } from '@/lib/format';
-import { addDays } from '@/lib/reminders';
+import { addDays, scheduleSummary } from '@/lib/reminders';
 import type { Tank } from '@/lib/types';
 
 const SUGGESTIONS = [
@@ -32,6 +43,16 @@ const KINDS = [
 ] as const;
 
 type Kind = (typeof KINDS)[number]['value'];
+
+// A water change needs how often; your own reminder may leave it blank for a one-off.
+function repeatProblem(text: string, kind: Kind): string | null {
+  const every = parseNumber(text);
+  const bad = every === null || !Number.isInteger(every) || every < 1 || every > 365;
+  if (kind === 'water') return bad ? 'Enter how often, as a whole number of days from 1 to 365.' : null;
+  return text.trim() !== '' && bad ? 'Repeat must be a whole number of days, from 1 to 365.' : null;
+}
+
+const titleProblem = (text: string) => (text.trim() ? null : 'Say what the reminder is for.');
 
 const tankLabel = (t: Tank) => (t.name ? `${t.tank_code} ${t.name}` : t.tank_code);
 
@@ -64,6 +85,8 @@ export default function CustomReminderScreen() {
   const [tanks, setTanks] = useState<Tank[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [titleError, setTitleError] = useState<string | null>(null);
+  const [repeatError, setRepeatError] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -95,6 +118,8 @@ export default function CustomReminderScreen() {
   // Feeding is a repeating reminder for a tank; a water change sets the tank's schedule instead.
   function pickKind(next: Kind) {
     setKind(next);
+    setTitleError(null);
+    setRepeatError(null);
     if (next === 'feeding') {
       setRepeat('1');
       setDue(todayISO());
@@ -127,8 +152,10 @@ export default function CustomReminderScreen() {
       setError('Choose the tank.');
       return;
     }
-    if (every === null || !Number.isInteger(every) || every < 1 || every > 365) {
-      setError('Enter how often, as a whole number of days from 1 to 365.');
+    const problem = repeatProblem(repeat, 'water');
+    setRepeatError(problem);
+    if (problem || every === null) {
+      setError(problem);
       return;
     }
     setBusy(true);
@@ -144,15 +171,19 @@ export default function CustomReminderScreen() {
 
   async function save() {
     if (kind === 'water') return saveWaterChange();
-    if (!title.trim()) {
-      setError('Say what the reminder is for.');
+    const missingTitle = titleProblem(title);
+    setTitleError(missingTitle);
+    if (missingTitle) {
+      setError(missingTitle);
+      return;
+    }
+    const problem = repeatProblem(repeat, kind);
+    setRepeatError(problem);
+    if (problem) {
+      setError(problem);
       return;
     }
     const every = parseNumber(repeat);
-    if (repeat.trim() !== '' && (every === null || !Number.isInteger(every) || every < 1 || every > 365)) {
-      setError('Repeat must be a whole number of days, from 1 to 365.');
-      return;
-    }
     setBusy(true);
     setError(null);
     try {
@@ -183,6 +214,16 @@ export default function CustomReminderScreen() {
   }
 
   const every = parseNumber(repeat);
+  // Shared by both repeat fields: check on leaving, and clear an error as soon as it's fixed.
+  const repeatProps = {
+    value: repeat,
+    onChangeText: (text: string) => {
+      setRepeat(text);
+      if (repeatError) setRepeatError(repeatProblem(text, kind));
+    },
+    onBlur: () => setRepeatError(repeatProblem(repeat, kind)),
+    error: repeatError,
+  };
 
   return (
     <Screen>
@@ -205,9 +246,12 @@ export default function CustomReminderScreen() {
             label="How often"
             options={REPEATS}
             value={REPEATS.some((r) => r.value === every) ? every : null}
-            onChange={(v) => setRepeat(v ? String(v) : '')}
+            onChange={(v) => {
+              setRepeat(v ? String(v) : '');
+              setRepeatError(null);
+            }}
           />
-          <NumberField label="Every (days)" value={repeat} onChangeText={setRepeat} />
+          <NumberField label="Every (days)" {...repeatProps} />
           <Muted>
             This sets the tank&apos;s water change schedule. The reminder counts from the last water change you log, so logging one moves it on.
           </Muted>
@@ -221,28 +265,51 @@ export default function CustomReminderScreen() {
               label="Common reminders"
               options={SUGGESTIONS}
               value={SUGGESTIONS.some((s) => s.value === title) ? title : null}
-              onChange={(v) => v && setTitle(v)}
+              onChange={(v) => {
+                if (!v) return;
+                setTitle(v);
+                setTitleError(null);
+              }}
             />
           ) : null}
-          <Field label="Remind me to" value={title} onChangeText={setTitle} placeholder="e.g. Move show prospects to conditioning" />
+          <Field
+            label="Remind me to"
+            value={title}
+            onChangeText={(text) => {
+              setTitle(text);
+              if (titleError) setTitleError(titleProblem(text));
+            }}
+            onBlur={() => setTitleError(titleProblem(title))}
+            error={titleError}
+            placeholder="e.g. Move show prospects to conditioning"
+          />
           <DateField label="On" value={due} onChange={setDue} />
           <ChipSelect
             label="Repeat"
             options={kind === 'feeding' ? FEED_REPEATS : REPEATS}
             value={(kind === 'feeding' ? FEED_REPEATS : REPEATS).some((r) => r.value === every) ? every : null}
-            onChange={(v) => setRepeat(v ? String(v) : '')}
+            onChange={(v) => {
+              setRepeat(v ? String(v) : '');
+              setRepeatError(null);
+            }}
             allowClear
           />
           <NumberField
             label="Repeat every (days)"
-            value={repeat}
-            onChangeText={setRepeat}
+            {...repeatProps}
             hint="Leave blank for a one-off. Marking a repeating reminder done moves it on by this many days."
           />
           <Field label="Notes" value={notes} onChangeText={setNotes} multiline />
+          {!repeatProblem(repeat, kind) ? (
+            <Muted>{scheduleSummary(due ?? todayISO(), every, todayISO())}</Muted>
+          ) : null}
           <ErrorText message={error} />
           <Button title={reminderId ? 'Save changes' : 'Save reminder'} onPress={save} busy={busy} />
-          {reminderId ? <Button title="Delete reminder" variant="danger" onPress={confirmDelete} /> : null}
+          {reminderId ? (
+            <DangerZone note="Deleting removes this reminder for good.">
+              <Button title="Delete reminder" variant="danger" onPress={confirmDelete} />
+            </DangerZone>
+          ) : null}
         </>
       )}
     </Screen>

@@ -2,7 +2,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { Alert } from 'react-native';
 
 import { TankForm } from '@/components/tank-form';
-import { Button, ErrorText, Loading, Screen } from '@/components/ui';
+import { Button, DangerZone, ErrorText, Loading, Screen } from '@/components/ui';
 import { deleteTank, getTank, updateTank } from '@/lib/db';
 import { useFocusData } from '@/lib/use-data';
 import { attempt } from '@/lib/alerts';
@@ -39,7 +39,9 @@ export default function EditTankScreen() {
           router.back();
         }}
       />
-      <Button title="Delete tank" variant="danger" onPress={confirmDelete} />
+      <DangerZone note="Deleting removes this tank and its water log for good.">
+        <Button title="Delete tank" variant="danger" onPress={confirmDelete} />
+      </DangerZone>
     </Screen>
   );
 }
