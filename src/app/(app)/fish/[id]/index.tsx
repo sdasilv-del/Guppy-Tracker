@@ -56,9 +56,9 @@ import {
 } from '@/lib/db';
 import { formatAge, formatDate } from '@/lib/format';
 import { copiesLabel, inferredCarrier } from '@/lib/genetics';
-import type { FishPhoto } from '@/lib/types';
+import type { Fish, FishPhoto } from '@/lib/types';
 import { formatInbreeding, makeKinship } from '@/lib/kinship';
-import { bestPlacings, bestScores, littermates, scoreLabel } from '@/lib/scores';
+import { bestPlacings, bestScores, littermates, resultsByFish, scoreLabel } from '@/lib/scores';
 import { useFocusData } from '@/lib/use-data';
 
 export default function FishScreen() {
@@ -111,6 +111,7 @@ export default function FishScreen() {
       geneRecords,
       bestScores: bestScores(allScores),
       bestPlacings: bestPlacings(allShows),
+      results: resultsByFish(allScores, allShows),
       traitNames: Object.fromEntries(traits.map((t) => [t.id, t.name])),
     };
   });
@@ -135,6 +136,7 @@ export default function FishScreen() {
   const fromSpawn = fish.spawn_id ? data.spawns.find((s) => s.id === fish.spawn_id) : null;
   const parentOf = data.spawns.filter((s) => s.sire_id === id || s.dam_id === id);
   const openSpawn = (sid: string) => router.push({ pathname: '/spawns/[id]', params: { id: sid } });
+  const withResult = (f: Fish) => [fishLabel(f), data.results.get(f.id)].filter(Boolean).join(' · ');
   const openFish = (fid: string) => router.push({ pathname: '/fish/[id]', params: { id: fid } });
 
   async function run(action: () => Promise<void>) {
@@ -405,12 +407,12 @@ export default function FishScreen() {
           />
         }>
         {sire ? (
-          <ListRow icon={Icons.fish} title={`Sire · ${sire.fish_code}`} subtitle={fishLabel(sire)} onPress={() => openFish(sire.id)} />
+          <ListRow icon={Icons.fish} title={`Sire · ${sire.fish_code}`} subtitle={withResult(sire)} onPress={() => openFish(sire.id)} />
         ) : (
           <ListRow title="Sire · Unknown" />
         )}
         {dam ? (
-          <ListRow icon={Icons.fish} title={`Dam · ${dam.fish_code}`} subtitle={fishLabel(dam)} onPress={() => openFish(dam.id)} />
+          <ListRow icon={Icons.fish} title={`Dam · ${dam.fish_code}`} subtitle={withResult(dam)} onPress={() => openFish(dam.id)} />
         ) : (
           <ListRow title="Dam · Unknown" />
         )}
@@ -475,7 +477,7 @@ export default function FishScreen() {
             icon={Icons.fish}
             key={f.id}
             title={f.fish_code}
-            subtitle={[f.name, f.strain, labelOf(FISH_STATUSES, f.status)].filter(Boolean).join(' · ')}
+            subtitle={[f.name, f.strain, labelOf(FISH_STATUSES, f.status), data.results.get(f.id)].filter(Boolean).join(' · ')}
             onPress={() => openFish(f.id)}
           />
         ))}

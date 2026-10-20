@@ -5,12 +5,12 @@ import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-nati
 import { Button, Card, ErrorText, Loading, Muted, Screen } from '@/components/ui';
 import { Icons } from '@/constants/icons';
 import { Spacing } from '@/constants/theme';
-import { labelOf, TAIL_STANDARDS } from '@/lib/constants';
+import { labelOf, SEXES, TAIL_STANDARDS } from '@/lib/constants';
 import { useAuth } from '@/lib/auth';
 import { latestPhotoPaths, listAllShowEntries, listEvaluationSummaries, listEvaluations, listFish, signedPhotoUrls } from '@/lib/db';
 import { bestEvaluation, certificateHtml } from '@/lib/export';
 import { pedigreeColumns, repeatedAncestors } from '@/lib/pedigree';
-import { bestPlacings, bestScores, scoreLabel } from '@/lib/scores';
+import { littermates, resultsByFish } from '@/lib/scores';
 import { imageDataUri, printHtml } from '@/lib/share';
 import type { Fish } from '@/lib/types';
 import { useFocusData } from '@/lib/use-data';
@@ -58,16 +58,7 @@ export default function PedigreeScreen() {
   const [printing, setPrinting] = useState(false);
   const { data, error } = useFocusData(async () => {
     const [fish, scores, shows] = await Promise.all([listFish(), listEvaluationSummaries(), listAllShowEntries()]);
-    const best = bestScores(scores);
-    const placings = bestPlacings(shows);
-    // Each ancestor's best score and placing, e.g. "IHS 86.5 / 100 · 1st, Trans Canada".
-    const results = new Map<string, string>();
-    for (const f of fish) {
-      const score = best.get(f.id);
-      const text = [score ? `IHS ${scoreLabel(score)}` : null, placings.get(f.id)].filter(Boolean).join(' · ');
-      if (text) results.set(f.id, text);
-    }
-    return { fish, results };
+    return { fish, results: resultsByFish(scores, shows) };
   });
 
   if (!data && !error) return <Loading />;
@@ -79,6 +70,7 @@ export default function PedigreeScreen() {
   const repeated = repeatedAncestors(columns);
   const repeatedIds = new Set(repeated.map((r) => r.fish.id));
   const height = columns[columns.length - 1].length * SLOT;
+  const siblings = littermates(fish, data?.fish ?? []);
 
   return (
     <Screen>
@@ -116,6 +108,19 @@ export default function PedigreeScreen() {
         ))}
       </ScrollView>
 
+      {siblings.length > 0 ? (
+        <Card>
+          <Text style={[styles.code, { color: theme.text }]}>Littermates</Text>
+          {siblings.map((f) => (
+            <Pressable key={f.id} onPress={() => router.push({ pathname: '/fish/[id]', params: { id: f.id } })}>
+              <Muted>
+                {[f.fish_code, labelOf(SEXES, f.sex), data?.results.get(f.id) ?? 'Not scored'].filter(Boolean).join(' · ')}
+              </Muted>
+            </Pressable>
+          ))}
+        </Card>
+      ) : null}
+
       <Button
         title="Print pedigree certificate"
         icon={Icons.print}
@@ -139,6 +144,7 @@ export default function PedigreeScreen() {
                 photo,
                 best: bestEvaluation(evaluations),
                 results: data?.results,
+                siblings,
               }),
             );
           } catch (e) {
@@ -148,7 +154,7 @@ export default function PedigreeScreen() {
           }
         }}
       />
-      <Muted>A one-page certificate with the fish&apos;s photo, best IHS score and three generations with their scores, to give a buyer or save as a PDF.</Muted>
+      <Muted>A one-page certificate with the fish&apos;s photo, best IHS score, three generations and littermates with their scores, to give a buyer or save as a PDF.</Muted>
     </Screen>
   );
 }

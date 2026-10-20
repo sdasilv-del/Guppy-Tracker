@@ -48,3 +48,15 @@ export function littermates(fish: Fish, allFish: Fish[]): Fish[] {
     })
     .sort((a, b) => a.fish_code.localeCompare(b.fish_code));
 }
+
+// A fish's best score and placing in one line, e.g. "IHS 86.5 / 100 · 1st, Trans Canada".
+export function resultsByFish(evaluations: ScoreSummary[], entries: ShowEntry[]): Map<string, string> {
+  const best = bestScores(evaluations);
+  const placings = bestPlacings(entries);
+  const results = new Map<string, string>();
+  for (const id of new Set([...best.keys(), ...placings.keys()])) {
+    const score = best.get(id);
+    results.set(id, [score ? `IHS ${scoreLabel(score)}` : null, placings.get(id)].filter(Boolean).join(' · '));
+  }
+  return results;
+}

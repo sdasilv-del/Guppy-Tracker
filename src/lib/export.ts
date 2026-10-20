@@ -145,7 +145,7 @@ export function certificateHtml(
   fish: Fish,
   allFish: Fish[],
   profile: Profile | null,
-  extras: { photo?: string | null; best?: Evaluation | null; results?: Map<string, string> } = {},
+  extras: { photo?: string | null; best?: Evaluation | null; results?: Map<string, string>; siblings?: Fish[] } = {},
 ): string {
   const byId = Object.fromEntries(allFish.map((f) => [f.id, f]));
   const columns = pedigreeColumns(fish, byId, CERT_DEPTH);
@@ -206,6 +206,10 @@ export function certificateHtml(
     .map(([k, v]) => `<tr><th style="width: 30%">${k}</th><td>${escapeHtml(v)}</td></tr>`)
     .join('');
   const breeder = breederLine(profile);
+  const siblings = extras.siblings ?? [];
+  const siblingRows = siblings
+    .map((f) => `<tr>${[f.fish_code, labelOf(SEXES, f.sex), extras.results?.get(f.id) ?? ''].map((v) => `<td>${escapeHtml(v)}</td>`).join('')}</tr>`)
+    .join('');
 
   return `<html><head><meta charset="utf-8"><style>${PAGE_STYLE}</style></head><body>
     <h1>Pedigree certificate</h1>
@@ -217,6 +221,11 @@ export function certificateHtml(
       <tr>${CERT_HEADINGS.map((h) => `<th>${h}</th>`).join('')}</tr>
       ${rows.join('')}
     </table>
+    ${siblings.length > 0 ? `<h2 style="font-size: 16px; margin: 20px 0 8px;">Littermates</h2>
+    <table>
+      <tr><th>Fish</th><th>Sex</th><th>Best result</th></tr>
+      ${siblingRows}
+    </table>` : ''}
     <div class="sign">Breeder's signature</div>
     <div class="foot">Printed ${formatDate(todayISO())} from Guppy Tracker.</div>
   </body></html>`;
