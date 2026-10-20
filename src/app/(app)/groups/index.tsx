@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 
-import { Button, Empty, ErrorText, ListRow, Loading, Muted, Screen, Section } from '@/components/ui';
+import { Button, Empty, ErrorText, Heading, ListRow, ListScreen, Loading, Muted } from '@/components/ui';
 import { Icons } from '@/constants/icons';
 import { groupMembers, listFish, listGroups } from '@/lib/db';
 import { formatDate } from '@/lib/format';
@@ -20,7 +20,7 @@ function groupSubtitle(g: BreedingGroup, members: Fish[]): string {
 }
 
 export default function GroupsScreen() {
-  const { data, error } = useFocusData(async () => {
+  const { data, error, reload } = useFocusData(async () => {
     const [groups, members, fish] = await Promise.all([listGroups(), groupMembers(), listFish()]);
     return { groups, members, fishById: Object.fromEntries(fish.map((f) => [f.id, f])) };
   });
@@ -29,12 +29,18 @@ export default function GroupsScreen() {
 
   const active = data?.groups.filter((g) => !g.ended_on) ?? [];
   const ended = data?.groups.filter((g) => g.ended_on) ?? [];
+  // Headings and groups in one list, so only the rows on screen are drawn.
+  const items: ('active' | 'ended' | BreedingGroup)[] = [
+    'active',
+    ...active,
+    ...(ended.length > 0 ? (['ended'] as const) : []),
+    ...ended,
+  ];
   const row = (g: BreedingGroup) => {
     const members = (data?.members[g.id] ?? []).map((id) => data!.fishById[id]).filter(Boolean);
     return (
       <ListRow
-            icon={Icons.group}
-        key={g.id}
+        icon={Icons.group}
         title={g.name ? `${g.group_code} · ${g.name}` : g.group_code}
         subtitle={groupSubtitle(g, members)}
         onPress={() => router.push({ pathname: '/groups/[id]', params: { id: g.id } })}
@@ -43,21 +49,33 @@ export default function GroupsScreen() {
   };
 
   return (
-    <Screen>
-      <Button title="Start a breeding group" icon={Icons.group} onPress={() => router.push('/groups/new')} />
-      <ErrorText message={error} />
-      <Section title={`Active (${active.length})`}>
-        {active.length === 0 ? (
-          <Empty>No active groups. Put a pair, trio or larger group together to start breeding.</Empty>
-        ) : null}
-        {active.map(row)}
-      </Section>
-      {ended.length > 0 ? (
-        <Section title={`Ended (${ended.length})`}>
-          <Muted>Groups that have ended. Their spawns are kept.</Muted>
-          {ended.map(row)}
-        </Section>
-      ) : null}
-    </Screen>
+    <ListScreen
+      header={
+        <>
+          <Button title="Start a breeding group" icon={Icons.group} onPress={() => router.push('/groups/new')} />
+          <ErrorText message={error} />
+        </>
+      }
+      data={items}
+      keyExtractor={(i) => (typeof i === 'string' ? i : i.id)}
+      onRefresh={reload}
+      renderItem={({ item }) =>
+        item === 'active' ? (
+          <>
+            <Heading>{`Active (${active.length})`}</Heading>
+            {active.length === 0 ? (
+              <Empty>No active groups. Put a pair, trio or larger group together to start breeding.</Empty>
+            ) : null}
+          </>
+        ) : item === 'ended' ? (
+          <>
+            <Heading>{`Ended (${ended.length})`}</Heading>
+            <Muted>Groups that have ended. Their spawns are kept.</Muted>
+          </>
+        ) : (
+          row(item)
+        )
+      }
+    />
   );
 }

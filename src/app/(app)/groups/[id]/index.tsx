@@ -101,7 +101,7 @@ export default function GroupScreen() {
   }
 
   return (
-    <Screen>
+    <Screen onRefresh={reload}>
       <Stack.Screen options={{ title: group.group_code }} />
 
       <Card>

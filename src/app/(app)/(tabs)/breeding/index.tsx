@@ -34,7 +34,7 @@ export default function BreedingScreen() {
   const code = (id: string | null) => (id ? fishById[id]?.fish_code ?? '?' : 'Unknown');
 
   return (
-    <Screen>
+    <Screen onRefresh={reload}>
       {error ? <LoadError message={`Couldn't load breeding. ${error}`} onRetry={reload} /> : null}
 
       <Section title={`Breeding groups (${activeGroups.length})`}>

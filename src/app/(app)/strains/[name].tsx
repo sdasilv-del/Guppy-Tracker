@@ -84,7 +84,7 @@ export default function StrainScreen() {
   const total = gens.reduce((n, g) => n + g.fish.length, 0);
 
   return (
-    <Screen>
+    <Screen onRefresh={reload}>
       <Stack.Screen options={{ title: name }} />
       {error ? <LoadError message={`Couldn't load this strain. ${error}`} onRetry={reload} /> : null}
       <Card style={styles.summary}>

@@ -43,7 +43,7 @@ function daysBetween(fromIso: string, toIso: string): number {
 export default function TankScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const unit = useAuth().profile?.temperature_unit ?? 'C';
-  const { data, error } = useFocusData(async () => {
+  const { data, error, reload } = useFocusData(async () => {
     const [tank, fish, tests, changes, allSpawns, movesIn, allFish, care] = await Promise.all([
       getTank(id),
       listFishInTank(id),
@@ -82,7 +82,7 @@ export default function TankScreen() {
     router.push({ pathname: pathname as never, params: { id, ...params } });
 
   return (
-    <Screen>
+    <Screen onRefresh={reload}>
       <Stack.Screen options={{ title: tank.tank_code }} />
 
       <Card>

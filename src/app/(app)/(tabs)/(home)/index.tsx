@@ -180,7 +180,7 @@ export default function HomeScreen() {
   const comingUp = data?.reminders.filter((r) => r.due > today && daysBetween(today, r.due) <= COMING_UP_DAYS) ?? [];
 
   return (
-    <Screen>
+    <Screen onRefresh={reload}>
       <Stack.Screen
         options={{
           headerRight: () => (
