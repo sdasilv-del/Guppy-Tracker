@@ -30,3 +30,12 @@ export function repeatedAncestors(columns: (Fish | null)[][]): { fish: Fish; cou
   }
   return [...counts.values()].filter((e) => e.count > 1).sort((a, b) => b.count - a.count);
 }
+
+// How an ancestor in the tree is related to the fish, e.g. "Sire's dam" for column 2, slot 1.
+export function relationLabel(generation: number, index: number): string {
+  if (generation === 0) return 'This fish';
+  const parts: string[] = [];
+  for (let bit = generation - 1; bit >= 0; bit--) parts.push((index >> bit) & 1 ? 'dam' : 'sire');
+  const label = parts.join("'s ");
+  return label[0].toUpperCase() + label.slice(1);
+}

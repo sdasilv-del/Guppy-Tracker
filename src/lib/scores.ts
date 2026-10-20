@@ -60,3 +60,22 @@ export function resultsByFish(evaluations: ScoreSummary[], entries: ShowEntry[])
   }
   return results;
 }
+
+// What the score history chart shows, said in words for screen readers.
+export function scoreHistorySummary(
+  evaluations: { total: number; sex: 'M' | 'F'; evaluated_on: string }[],
+  formatDate: (iso: string) => string,
+): string {
+  if (evaluations.length === 0) return 'No scores yet.';
+  const label = (e: (typeof evaluations)[number]) => `${e.total} out of ${ihsMaxTotal(e.sex)} on ${formatDate(e.evaluated_on)}`;
+  const share = (e: (typeof evaluations)[number]) => e.total / ihsMaxTotal(e.sex);
+  const best = evaluations.reduce((a, b) => (share(b) > share(a) ? b : a));
+  const first = evaluations[0];
+  const latest = evaluations[evaluations.length - 1];
+  const count = evaluations.length === 1 ? '1 score' : `${evaluations.length} scores`;
+  const parts = [`${count}.`, `First ${label(first)}.`];
+  if (latest !== first) parts.push(`Latest ${label(latest)}.`);
+  if (best !== latest && best !== first) parts.push(`Highest ${label(best)}.`);
+  else if (evaluations.length > 1) parts.push(`Highest was the ${best === latest ? 'latest' : 'first'}.`);
+  return parts.join(' ');
+}
