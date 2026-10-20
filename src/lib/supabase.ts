@@ -4,6 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createClient, type Session } from '@supabase/supabase-js';
 import { AppState, Platform } from 'react-native';
 
+import type { Database } from '@/lib/database.types';
 import { clearOfflineData, getSyncState, offlineFetch, setTokenProvider } from '@/lib/offline';
 
 // The Guppy Tracker project. The publishable key is safe to ship in the app:
@@ -13,7 +14,7 @@ const url = process.env.EXPO_PUBLIC_SUPABASE_URL || 'https://mhikrakszlfmwicgeob
 const anonKey =
   process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || 'sb_publishable_jrO8ZUnEN4SObJikuiMm4A_Xgpizxml';
 
-export const supabase = createClient(url, anonKey, {
+export const supabase = createClient<Database>(url, anonKey, {
   auth: {
     storage: AsyncStorage,
     autoRefreshToken: true,
