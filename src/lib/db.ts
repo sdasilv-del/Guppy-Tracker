@@ -51,6 +51,11 @@ export async function updateTank(id: string, input: TankInput): Promise<void> {
   must(await supabase.from('tanks').update(input).eq('id', id));
 }
 
+// Sets how often a tank's water is changed. The Home reminder counts from the last logged change.
+export async function setWaterChangeSchedule(tankId: string, everyDays: number | null): Promise<void> {
+  must(await supabase.from('tanks').update({ water_change_every_days: everyDays }).eq('id', tankId));
+}
+
 export async function deleteTank(id: string): Promise<void> {
   must(await supabase.from('tanks').delete().eq('id', id));
 }

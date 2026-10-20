@@ -1,7 +1,6 @@
 import { type Href, router, Stack } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
-import { useEffect, useState } from 'react';
-import { Alert, Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 import { Body, Button, Card, Empty, Heading, Icon, ListRow, LoadError, Muted, Screen, Section } from '@/components/ui';
 import { type IconName, Icons } from '@/constants/icons';
@@ -26,12 +25,7 @@ import {
 } from '@/lib/db';
 import { buildInsights, DEFAULT_INSIGHT_SETTINGS, type Insight, type InsightKind } from '@/lib/insights';
 import { todayISO } from '@/lib/format';
-import {
-  disableNotifications,
-  enableNotifications,
-  notificationsEnabled,
-  scheduleReminderNotifications,
-} from '@/lib/notifications';
+import { scheduleReminderNotifications } from '@/lib/notifications';
 import { buildReminders, daysBetween, dueLabel, type Reminder, type ReminderKind } from '@/lib/reminders';
 import { summarizeBatch } from '@/lib/spawn';
 import { useFocusData } from '@/lib/use-data';
@@ -181,29 +175,6 @@ export default function HomeScreen() {
     };
   });
 
-  const [notifyOn, setNotifyOn] = useState<boolean | null>(null);
-  useEffect(() => {
-    notificationsEnabled().then(setNotifyOn);
-  }, []);
-
-  async function toggleNotifications() {
-    if (notifyOn) {
-      await disableNotifications();
-      setNotifyOn(false);
-      return;
-    }
-    const granted = await enableNotifications();
-    setNotifyOn(granted);
-    if (!granted) {
-      Alert.alert(
-        'Notifications are off',
-        'Turn on notifications for Guppy Tracker in your phone\'s Settings to get morning reminders.',
-      );
-      return;
-    }
-    if (data) await scheduleReminderNotifications(data.reminders);
-  }
-
   const today = data?.today ?? todayISO();
   const due = data?.reminders.filter((r) => r.due <= today) ?? [];
   const comingUp = data?.reminders.filter((r) => r.due > today && daysBetween(today, r.due) <= COMING_UP_DAYS) ?? [];
@@ -272,14 +243,6 @@ export default function HomeScreen() {
 
       <InsightList title="Insights" insights={data?.insights.filter((i) => !i.warn) ?? []} />
 
-      {data && notifyOn !== null ? (
-        <Button
-          title={notifyOn ? 'Turn off morning reminders' : 'Remind me each morning'}
-          icon={Icons.reminder}
-          variant="secondary"
-          onPress={toggleNotifications}
-        />
-      ) : null}
       <ListRow
         icon={Icons.show}
         title="Season points"
