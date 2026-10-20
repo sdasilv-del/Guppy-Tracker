@@ -9,7 +9,8 @@ import { FishFamily } from '@/components/fish-page/family';
 import { FishHistory } from '@/components/fish-page/history';
 import { FishOverview } from '@/components/fish-page/overview';
 import { FishScores } from '@/components/fish-page/scores';
-import { Button, ErrorText, Icon, Loading, Screen, SegmentedTabs } from '@/components/ui';
+import { LineGuppy } from '@/components/line-icons';
+import { Button, ErrorText, Loading, Screen, SegmentedTabs } from '@/components/ui';
 import { Icons } from '@/constants/icons';
 import { Display, Spacing } from '@/constants/theme';
 import { FISH_STATUSES, ihsMaxTotal, labelOf, SEXES, TAIL_OPTIONS } from '@/lib/constants';
@@ -107,7 +108,7 @@ export default function FishScreen() {
           <Image source={{ uri: cover }} style={[styles.cover, { borderColor: theme.divider }]} contentFit="cover" />
         ) : (
           <View style={[styles.cover, styles.noCover, { backgroundColor: theme.backgroundElement, borderColor: theme.divider }]}>
-            <Icon name={Icons.fish} size={44} color={theme.accent} />
+            <LineGuppy tail={fish.tail_standard} size={96} />
           </View>
         )}
 

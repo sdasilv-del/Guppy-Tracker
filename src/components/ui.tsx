@@ -1,5 +1,5 @@
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { type ReactNode, useEffect, useState } from 'react';
+import { isValidElement, type ReactNode, useEffect, useState } from 'react';
 import {
   AccessibilityInfo,
   ActivityIndicator,
@@ -106,7 +106,8 @@ export function ListScreen<T>({
   return (
     <FlatList
       style={{ backgroundColor: theme.background }}
-      contentContainerStyle={styles.screen}
+      // Rows sit flush, so their hairlines read as one list; the header keeps its own spacing.
+      contentContainerStyle={[styles.screen, styles.listContent]}
       contentInsetAdjustmentBehavior="automatic"
       keyboardShouldPersistTaps="handled"
       keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
@@ -135,7 +136,11 @@ export function Icon({ name, size = 20, color }: { name: IconName; size?: number
 
 export function Heading({ children }: { children: ReactNode }) {
   const theme = useTheme();
-  return <Text style={[styles.heading, { color: theme.text }]}>{children}</Text>;
+  return (
+    <Text accessibilityRole="header" style={[styles.heading, { color: theme.text }]}>
+      {children}
+    </Text>
+  );
 }
 
 export function Muted({ children, style }: { children: ReactNode; style?: object }) {
@@ -169,19 +174,32 @@ export function Card({ children, style }: { children: ReactNode; style?: ViewSty
   );
 }
 
+// Small spaced capitals that label a group of rows, as on the fish page.
+export function Caps({ children, style }: { children: ReactNode; style?: object }) {
+  const theme = useTheme();
+  return (
+    <Text accessibilityRole="header" style={[styles.caps, { color: theme.textSecondary }, style]}>
+      {children}
+    </Text>
+  );
+}
+
 export function Section({
   title,
   action,
+  caps,
   children,
 }: {
   title: string;
   action?: ReactNode;
+  // A quiet small-capitals label instead of a serif heading.
+  caps?: boolean;
   children: ReactNode;
 }) {
   return (
     <View style={styles.section}>
       <View style={styles.sectionHeader}>
-        <Heading>{title}</Heading>
+        {caps ? <Caps>{title}</Caps> : <Heading>{title}</Heading>}
         {action}
       </View>
       {children}
@@ -507,7 +525,8 @@ export function ListRow({
   subtitle?: string;
   right?: ReactNode;
   onPress?: () => void;
-  icon?: IconName;
+  // A symbol, or a line drawing from line-icons for fish, tanks and spawns.
+  icon?: IconName | ReactNode;
 }) {
   const theme = useTheme();
   return (
@@ -517,11 +536,11 @@ export function ListRow({
       disabled={!onPress}
       style={({ pressed }) => [
         styles.listRow,
-        { backgroundColor: theme.backgroundElement, borderColor: theme.divider, opacity: pressed ? 0.75 : 1 },
+        { borderBottomColor: theme.divider, backgroundColor: pressed ? theme.backgroundSelected : 'transparent' },
       ]}>
       {icon ? (
-        <View style={[styles.listIcon, { backgroundColor: theme.backgroundSelected }]}>
-          <Icon name={icon} size={18} />
+        <View style={styles.listIcon}>
+          {isValidElement(icon) ? icon : <Icon name={icon as IconName} size={18} />}
         </View>
       ) : null}
       <View style={{ flex: 1 }}>
@@ -567,17 +586,29 @@ export function LoadError({ message, onRetry }: { message: string; onRetry: () =
   );
 }
 
-export function Empty({ children }: { children: ReactNode }) {
+// Nothing here yet: a hairline box with a short note, and a line drawing for lists of fish, tanks or spawns.
+export function Empty({ children, art }: { children: ReactNode; art?: ReactNode }) {
+  const theme = useTheme();
   return (
-    <Card style={{ alignItems: 'center' }}>
+    <View style={[styles.empty, { borderColor: theme.divider }]}>
+      {art}
       <Muted style={{ textAlign: 'center' }}>{children}</Muted>
-    </Card>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   screen: { padding: Spacing.three, gap: Spacing.three, paddingBottom: Spacing.six, flexGrow: 1 },
-  listHeader: { gap: Spacing.three },
+  listHeader: { gap: Spacing.three, marginBottom: Spacing.three },
+  listContent: { gap: 0 },
+  caps: { fontSize: 11, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 1.6 },
+  empty: {
+    borderRadius: 6,
+    borderWidth: StyleSheet.hairlineWidth,
+    padding: Spacing.four,
+    gap: Spacing.two,
+    alignItems: 'center',
+  },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   heading: { fontFamily: Display.semibold, fontSize: 24, lineHeight: 28 },
   muted: { fontSize: 14, lineHeight: 20 },
@@ -638,15 +669,17 @@ const styles = StyleSheet.create({
   },
   infoLabel: { fontSize: 14 },
   infoValue: { fontSize: 15, fontWeight: '500', flexShrink: 1, textAlign: 'right' },
+  // Hairline rows rather than filled boxes.
   listRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.two,
-    borderRadius: 6,
-    borderWidth: StyleSheet.hairlineWidth,
-    padding: Spacing.three,
+    gap: Spacing.three,
+    minHeight: 56,
+    paddingVertical: Spacing.two + 4,
+    paddingHorizontal: Spacing.one,
+    borderBottomWidth: StyleSheet.hairlineWidth,
   },
   listTitle: { fontSize: 16, fontWeight: '600' },
-  listIcon: { width: 36, height: 36, borderRadius: 4, alignItems: 'center', justifyContent: 'center' },
+  listIcon: { width: 32, height: 32, alignItems: 'center', justifyContent: 'center' },
   buttonContent: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
 });

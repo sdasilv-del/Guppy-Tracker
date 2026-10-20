@@ -1,6 +1,7 @@
 import { router } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
 
+import { LineSpawn } from '@/components/line-icons';
 import { Button, Empty, ListRow, LoadError, Loading, Screen, Section } from '@/components/ui';
 import { Icons } from '@/constants/icons';
 import { Spacing } from '@/constants/theme';
@@ -64,10 +65,10 @@ export default function BreedingScreen() {
       </Section>
 
       <Section title={`Fry growing out (${growing.length})`}>
-        {growing.length === 0 ? <Empty>No fry batches growing out. Record a spawn from a breeding group.</Empty> : null}
+        {growing.length === 0 ? <Empty art={<LineSpawn size={44} />}>No fry batches growing out. Record a spawn from a breeding group.</Empty> : null}
         {growing.map(({ spawn: s, batch }) => (
           <ListRow
-            icon={Icons.spawn}
+            icon={<LineSpawn />}
             key={s.id}
             title={`${s.spawn_code} · ${code(s.sire_id)} × ${code(s.dam_id)}`}
             subtitle={`Born ${formatDate(s.born_on)} (${formatAge(s.born_on) || 'new'}) · ${batch.remaining} of ${
