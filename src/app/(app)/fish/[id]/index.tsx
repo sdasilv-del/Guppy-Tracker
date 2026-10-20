@@ -9,10 +9,10 @@ import { FishFamily } from '@/components/fish-page/family';
 import { FishHistory } from '@/components/fish-page/history';
 import { FishOverview } from '@/components/fish-page/overview';
 import { FishScores } from '@/components/fish-page/scores';
-import { Button, Card, ErrorText, Icon, Loading, Muted, Screen, SegmentedTabs } from '@/components/ui';
+import { Button, ErrorText, Icon, Loading, Screen, SegmentedTabs } from '@/components/ui';
 import { Icons } from '@/constants/icons';
-import { Spacing } from '@/constants/theme';
-import { FISH_STATUSES, labelOf, SEXES, TAIL_OPTIONS } from '@/lib/constants';
+import { Display, Spacing } from '@/constants/theme';
+import { FISH_STATUSES, ihsMaxTotal, labelOf, SEXES, TAIL_OPTIONS } from '@/lib/constants';
 import { useAuth } from '@/lib/auth';
 import { addFishPhoto, deleteFishPhoto } from '@/lib/db';
 import { formatAge } from '@/lib/format';
@@ -31,7 +31,7 @@ const TABS = [
 
 type Tab = (typeof TABS)[number]['value'];
 
-// One fish: a header card with what matters at a glance, then its details split into four tabs.
+// One fish: a photo-led header with what matters at a glance, then its details split into four tabs.
 export default function FishScreen() {
   const { id, tab: tabParam } = useLocalSearchParams<{ id: string; tab?: Tab }>();
   const theme = useTheme();
@@ -100,39 +100,65 @@ export default function FishScreen() {
     <Screen onRefresh={reload}>
       <Stack.Screen options={{ title: fish.fish_code }} />
 
-      <Card style={styles.header}>
+      <View style={styles.header}>
         {cover ? (
-          <Image source={{ uri: cover }} style={styles.cover} contentFit="cover" />
+          <Image source={{ uri: cover }} style={[styles.cover, { borderColor: theme.divider }]} contentFit="cover" />
         ) : (
-          <View style={[styles.cover, styles.noCover, { backgroundColor: theme.backgroundSelected }]}>
-            <Icon name={Icons.fish} size={30} color={theme.textSecondary} />
+          <View style={[styles.cover, styles.noCover, { backgroundColor: theme.backgroundElement, borderColor: theme.divider }]}>
+            <Icon name={Icons.fish} size={44} color={theme.accent} />
           </View>
         )}
-        <View style={styles.headerText}>
-          <Text style={[styles.code, { color: theme.text }]} numberOfLines={1}>
-            {fish.fish_code}
-          </Text>
-          {fish.name ? <Muted>{fish.name}</Muted> : null}
-          <Muted>
-            {[labelOf(SEXES, fish.sex), labelOf(TAIL_OPTIONS, fish.tail_standard), formatAge(fish.date_of_birth)]
-              .filter(Boolean)
-              .join(' · ')}
-          </Muted>
-          <Muted>
-            {[labelOf(FISH_STATUSES, fish.status), fish.tank_id ? data.tankNames[fish.tank_id] : null]
-              .filter(Boolean)
-              .join(' · ')}
-          </Muted>
-          {best || placing ? (
-            <Text style={[styles.best, { color: theme.accent }]}>
-              {[best ? `Best IHS ${scoreLabel(best)}` : null, placing].filter(Boolean).join(' · ')}
+
+        <View style={styles.titleRow}>
+          <View style={styles.headerText}>
+            <Text style={[styles.code, { color: theme.text }]} numberOfLines={1} adjustsFontSizeToFit>
+              {fish.fish_code}
             </Text>
+            {fish.name ? <Text style={[styles.name, { color: theme.textSecondary }]}>{fish.name}</Text> : null}
+            <Text style={[styles.caps, { color: theme.textSecondary }]}>
+              {[labelOf(SEXES, fish.sex), labelOf(TAIL_OPTIONS, fish.tail_standard), formatAge(fish.date_of_birth)]
+                .filter(Boolean)
+                .join(' · ')}
+            </Text>
+          </View>
+          {best ? (
+            <View style={styles.score} accessible accessibilityLabel={`Best IHS ${scoreLabel(best)}`}>
+              <Text style={[styles.scoreValue, { color: theme.highlight }]}>{best.total}</Text>
+              <Text style={[styles.capsSmall, { color: theme.textSecondary }]}>
+                Best IHS / {ihsMaxTotal(best.sex)}
+              </Text>
+            </View>
           ) : null}
         </View>
-      </Card>
+
+        <View style={[styles.rule, { backgroundColor: theme.accent }]} />
+
+        <View style={styles.details}>
+          <Detail label="Status" value={labelOf(FISH_STATUSES, fish.status)} />
+          <Detail label="Tank" value={fish.tank_id ? data.tankNames[fish.tank_id] : null} />
+          <Detail label={placing ? 'Best placing' : 'Strain'} value={placing ?? fish.strain} highlight={!!placing} />
+        </View>
+      </View>
 
       <ErrorText message={actionError} />
       <View style={styles.buttons}>
+        <View style={styles.wide}>
+          <Button
+            title="Score"
+            icon={Icons.evaluation}
+            small
+            onPress={() => router.push({ pathname: '/fish/[id]/evaluation', params: { id } })}
+          />
+        </View>
+        <View style={styles.half}>
+          <Button
+            title="Move"
+            icon={Icons.move}
+            variant="secondary"
+            small
+            onPress={() => router.push({ pathname: '/fish/[id]/move', params: { id } })}
+          />
+        </View>
         <View style={styles.half}>
           <Button
             title="Edit"
@@ -140,23 +166,6 @@ export default function FishScreen() {
             variant="secondary"
             small
             onPress={() => router.push({ pathname: '/fish/[id]/edit', params: { id } })}
-          />
-        </View>
-        <View style={styles.half}>
-          <Button
-            title="Move"
-            icon={Icons.move}
-            small
-            onPress={() => router.push({ pathname: '/fish/[id]/move', params: { id } })}
-          />
-        </View>
-        <View style={styles.half}>
-          <Button
-            title="Score"
-            icon={Icons.evaluation}
-            variant="secondary"
-            small
-            onPress={() => router.push({ pathname: '/fish/[id]/evaluation', params: { id } })}
           />
         </View>
       </View>
@@ -171,13 +180,36 @@ export default function FishScreen() {
   );
 }
 
+// A small labelled value under the fish's name, such as its status or tank.
+function Detail({ label, value, highlight }: { label: string; value: string | null | undefined; highlight?: boolean }) {
+  const theme = useTheme();
+  return (
+    <View style={styles.detail}>
+      <Text style={[styles.capsSmall, { color: theme.textSecondary }]}>{label}</Text>
+      <Text style={[styles.detailValue, { color: highlight ? theme.accent : theme.text }]} numberOfLines={2}>
+        {value || '—'}
+      </Text>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
-  header: { flexDirection: 'row', gap: Spacing.three, alignItems: 'center' },
-  cover: { width: 96, height: 96, borderRadius: 12 },
+  header: { gap: Spacing.three },
+  cover: { width: '100%', aspectRatio: 16 / 10, borderRadius: 4, borderWidth: StyleSheet.hairlineWidth },
   noCover: { alignItems: 'center', justifyContent: 'center' },
-  headerText: { flex: 1, gap: 2 },
-  code: { fontSize: 22, fontWeight: '700' },
-  best: { fontSize: 14, fontWeight: '600', marginTop: 2 },
+  titleRow: { flexDirection: 'row', alignItems: 'flex-end', gap: Spacing.three },
+  headerText: { flex: 1, gap: Spacing.one },
+  code: { fontFamily: Display.semibold, fontSize: 36, lineHeight: 40, fontVariant: ['lining-nums', 'tabular-nums'] },
+  name: { fontFamily: Display.italic, fontSize: 19 },
+  caps: { fontSize: 11, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 1.6 },
+  capsSmall: { fontSize: 10, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 1.4 },
+  score: { alignItems: 'flex-end', gap: 2 },
+  scoreValue: { fontFamily: Display.medium, fontSize: 44, lineHeight: 46, fontVariant: ['lining-nums', 'tabular-nums'] },
+  rule: { height: StyleSheet.hairlineWidth, opacity: 0.6 },
+  details: { flexDirection: 'row', gap: Spacing.three },
+  detail: { flex: 1, gap: Spacing.one },
+  detailValue: { fontSize: 15 },
   buttons: { flexDirection: 'row', gap: Spacing.two },
+  wide: { flex: 1.4 },
   half: { flex: 1 },
 });

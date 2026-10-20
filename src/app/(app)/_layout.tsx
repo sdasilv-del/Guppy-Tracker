@@ -1,8 +1,10 @@
 import { Stack } from 'expo-router';
 
+import { HeaderOptions } from '@/constants/theme';
+
 export default function AppLayout() {
   return (
-    <Stack screenOptions={{ headerBackTitle: 'Back' }}>
+    <Stack screenOptions={HeaderOptions}>
       <Stack.Screen name="(tabs)" options={{ headerShown: false, title: 'Home' }} />
       <Stack.Screen name="profile" options={{ title: 'Profile' }} />
       <Stack.Screen name="export" options={{ title: 'Export and print' }} />
