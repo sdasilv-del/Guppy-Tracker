@@ -11,6 +11,7 @@ import {
 } from '@/lib/constants';
 import { formatDate, todayISO } from '@/lib/format';
 import { pedigreeColumns } from '@/lib/pedigree';
+import { entryPoints } from '@/lib/points';
 import type { Evaluation, Fish, Profile, Sale, ShowEntry, Tank, WaterTest } from '@/lib/types';
 
 // Spreadsheets and printouts built from the fish room records. Nothing here touches the phone,
@@ -70,11 +71,21 @@ export function salesCsv(sales: Sale[], fish: Fish[]): string {
   );
 }
 
-export function showsCsv(entries: ShowEntry[], fish: Fish[]): string {
+// The judged score behind a show entry, e.g. "86.5 / 100", from the official evaluation it came from.
+export type EntryScore = Pick<Evaluation, 'id' | 'sex' | 'total'>;
+
+export function scoreText(e: ShowEntry, scores: EntryScore[]): string {
+  const s = e.evaluation_id ? scores.find((x) => x.id === e.evaluation_id) : undefined;
+  return s ? `${s.total} / ${ihsMaxTotal(s.sex)}` : '';
+}
+
+export function showsCsv(entries: ShowEntry[], fish: Fish[], scores: EntryScore[] = []): string {
   const byId = Object.fromEntries(fish.map((f) => [f.id, f]));
   return toCsv(
-    ['Date', 'Show', 'Fish', 'Class', 'Placement', 'Points', 'Notes'],
-    entries.map((e) => [e.shown_on, e.show_name, codeOf(byId, e.fish_id), e.show_class, e.placement, e.points, e.notes]),
+    ['Date', 'Show', 'Fish', 'Class', 'IHS score', 'Placement', 'Points', 'Notes'],
+    entries.map((e) => [
+      e.shown_on, e.show_name, codeOf(byId, e.fish_id), e.show_class, scoreText(e, scores), e.placement, pointsText(e), e.notes,
+    ]),
   );
 }
 
@@ -205,6 +216,13 @@ export function certificateHtml(
   </body></html>`;
 }
 
+// Season points for an entry, as on the Season points screen. Points worked out from the placing get a *.
+function pointsText(e: ShowEntry): string {
+  const { points, estimated } = entryPoints(e);
+  if (points === 0 && estimated) return '';
+  return estimated ? `${points}*` : String(points);
+}
+
 export type ShowKey = { show_name: string; shown_on: string };
 
 // The shows that have entries, newest first, once each.
@@ -218,7 +236,13 @@ export function listShows(entries: ShowEntry[]): ShowKey[] {
 }
 
 // The list of fish entered in one show, to bring to benching or send to the show secretary.
-export function showEntryListHtml(show: ShowKey, entries: ShowEntry[], allFish: Fish[], profile: Profile | null): string {
+export function showEntryListHtml(
+  show: ShowKey,
+  entries: ShowEntry[],
+  allFish: Fish[],
+  profile: Profile | null,
+  scores: EntryScore[] = [],
+): string {
   const byId = Object.fromEntries(allFish.map((f) => [f.id, f]));
   const mine = entries
     .filter((e) => e.show_name === show.show_name && e.shown_on === show.shown_on)
@@ -235,14 +259,16 @@ export function showEntryListHtml(show: ShowKey, entries: ShowEntry[], allFish: 
         f ? labelOf(TAIL_OPTIONS, f.tail_standard) : '',
         [c.base, c.cover.replace(/; /g, ', ')].filter(Boolean).join(' / '),
         f?.strain ?? '',
+        scoreText(e, scores),
         e.placement ?? '',
-        e.points !== null ? String(e.points) : '',
+        pointsText(e),
       ];
       return `<tr>${cells.map((v) => `<td>${escapeHtml(v)}</td>`).join('')}</tr>`;
     })
     .join('');
   const breeder = breederLine(profile);
-  const headings = ['#', 'Fish', 'Class', 'Sex', 'Tail', 'Colours', 'Strain', 'Placement', 'Points'];
+  const headings = ['#', 'Fish', 'Class', 'Sex', 'Tail', 'Colours', 'Strain', 'IHS score', 'Placement', 'Points'];
+  const estimated = mine.some((e) => e.points === null && entryPoints(e).points > 0);
 
   return `<html><head><meta charset="utf-8"><style>${PAGE_STYLE}</style></head><body>
     <h1>${escapeHtml(show.show_name)}</h1>
@@ -251,6 +277,7 @@ export function showEntryListHtml(show: ShowKey, entries: ShowEntry[], allFish: 
       <tr>${headings.map((h) => `<th>${h}</th>`).join('')}</tr>
       ${rows}
     </table>
+    ${estimated ? '<div class="foot">* Points from placing: 1st 10, 2nd 8, 3rd 6, 4th 4, 5th 2.</div>' : ''}
     <div class="foot">Printed ${formatDate(todayISO())} from Guppy Tracker.</div>
   </body></html>`;
 }
