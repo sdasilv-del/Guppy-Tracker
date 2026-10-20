@@ -1,23 +1,46 @@
-import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
+import {
+  CormorantGaramond_500Medium,
+  CormorantGaramond_500Medium_Italic,
+  CormorantGaramond_600SemiBold,
+  useFonts,
+} from '@expo-google-fonts/cormorant-garamond';
+import { DarkTheme, Stack, ThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
+import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
-import { useColorScheme } from 'react-native';
 
+import { Colors, HeaderOptions } from '@/constants/theme';
 import { AuthProvider, useAuth } from '@/lib/auth';
 
 SplashScreen.preventAutoHideAsync();
 
-function RootStack() {
+const theme = Colors.dark;
+
+// Navigation headers and backgrounds in the Midnight gold palette.
+const NavTheme = {
+  ...DarkTheme,
+  colors: {
+    ...DarkTheme.colors,
+    primary: theme.accent,
+    background: theme.background,
+    card: theme.background,
+    text: theme.text,
+    border: theme.divider,
+  },
+};
+
+function RootStack({ fontsReady }: { fontsReady: boolean }) {
   const { loading, session, profile } = useAuth();
+  const ready = !loading && fontsReady;
 
   useEffect(() => {
-    if (!loading) SplashScreen.hideAsync();
-  }, [loading]);
+    if (ready) SplashScreen.hideAsync();
+  }, [ready]);
 
-  if (loading) return null;
+  if (!ready) return null;
 
   return (
-    <Stack screenOptions={{ headerBackTitle: 'Back' }}>
+    <Stack screenOptions={HeaderOptions}>
       <Stack.Protected guard={!session}>
         <Stack.Screen name="sign-in" options={{ headerShown: false }} />
       </Stack.Protected>
@@ -32,11 +55,16 @@ function RootStack() {
 }
 
 export default function RootLayout() {
-  const colorScheme = useColorScheme();
+  const [loaded, error] = useFonts({
+    CormorantGaramond_500Medium,
+    CormorantGaramond_500Medium_Italic,
+    CormorantGaramond_600SemiBold,
+  });
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+    <ThemeProvider value={NavTheme}>
+      <StatusBar style="light" />
       <AuthProvider>
-        <RootStack />
+        <RootStack fontsReady={loaded || !!error} />
       </AuthProvider>
     </ThemeProvider>
   );

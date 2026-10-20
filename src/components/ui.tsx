@@ -22,7 +22,7 @@ import { SymbolView } from 'expo-symbols';
 
 import { SyncBanner } from '@/components/sync-banner';
 import { type IconName, Icons } from '@/constants/icons';
-import { Spacing } from '@/constants/theme';
+import { Display, Spacing } from '@/constants/theme';
 import { formatDate, fromISODate, toISODate } from '@/lib/format';
 import { clearReadCache } from '@/lib/offline';
 import { useTheme } from '@/hooks/use-theme';
@@ -163,7 +163,9 @@ export function Body({
 export function Card({ children, style }: { children: ReactNode; style?: ViewStyle }) {
   const theme = useTheme();
   return (
-    <View style={[styles.card, { backgroundColor: theme.backgroundElement }, style]}>{children}</View>
+    <View style={[styles.card, { backgroundColor: theme.backgroundElement, borderColor: theme.divider }, style]}>
+      {children}
+    </View>
   );
 }
 
@@ -206,7 +208,7 @@ export function Button({
 }) {
   const theme = useTheme();
   const bg =
-    variant === 'primary' ? theme.accent : variant === 'danger' ? 'transparent' : theme.backgroundSelected;
+    variant === 'primary' ? theme.accent : 'transparent';
   const fg =
     variant === 'primary' ? theme.onAccent : variant === 'danger' ? theme.danger : theme.text;
   return (
@@ -220,7 +222,7 @@ export function Button({
         styles.button,
         small && styles.buttonSmall,
         { backgroundColor: bg, opacity: disabled ? 0.5 : pressed ? 0.75 : 1 },
-        variant === 'danger' && { borderWidth: 1, borderColor: theme.danger },
+        variant !== 'primary' && { borderWidth: 1, borderColor: variant === 'danger' ? theme.danger : theme.border },
       ]}>
       {busy ? (
         <ActivityIndicator color={fg} />
@@ -328,7 +330,7 @@ export function SegmentedTabs<T extends string>({
 }) {
   const theme = useTheme();
   return (
-    <View accessibilityRole="tablist" style={[styles.segments, { backgroundColor: theme.backgroundElement }]}>
+    <View accessibilityRole="tablist" style={[styles.segments, { borderBottomColor: theme.divider }]}>
       {options.map((o) => {
         const selected = o.value === value;
         return (
@@ -337,10 +339,10 @@ export function SegmentedTabs<T extends string>({
             accessibilityRole="tab"
             accessibilityState={{ selected }}
             onPress={() => onChange(o.value)}
-            style={[styles.segment, selected && { backgroundColor: theme.accent }]}>
+            style={[styles.segment, selected && { borderBottomColor: theme.accent }]}>
             <Text
               numberOfLines={1}
-              style={[styles.segmentText, { color: selected ? theme.onAccent : theme.text }]}>
+              style={[styles.segmentText, { color: selected ? theme.highlight : theme.textSecondary }]}>
               {o.label}
             </Text>
           </Pressable>
@@ -492,7 +494,7 @@ export function ListRow({
       disabled={!onPress}
       style={({ pressed }) => [
         styles.listRow,
-        { backgroundColor: theme.backgroundElement, opacity: pressed ? 0.75 : 1 },
+        { backgroundColor: theme.backgroundElement, borderColor: theme.divider, opacity: pressed ? 0.75 : 1 },
       ]}>
       {icon ? (
         <View style={[styles.listIcon, { backgroundColor: theme.backgroundSelected }]}>
@@ -554,27 +556,27 @@ const styles = StyleSheet.create({
   screen: { padding: Spacing.three, gap: Spacing.three, paddingBottom: Spacing.six, flexGrow: 1 },
   listHeader: { gap: Spacing.three },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  heading: { fontSize: 20, fontWeight: '700' },
+  heading: { fontFamily: Display.semibold, fontSize: 24, lineHeight: 28 },
   muted: { fontSize: 14, lineHeight: 20 },
   body: { fontSize: 16, lineHeight: 22 },
-  card: { borderRadius: 12, padding: Spacing.three, gap: Spacing.two },
+  card: { borderRadius: 6, borderWidth: StyleSheet.hairlineWidth, padding: Spacing.three, gap: Spacing.two },
   section: { gap: Spacing.two },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   button: {
     minHeight: 48,
-    borderRadius: 10,
+    borderRadius: 4,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: Spacing.three,
   },
   buttonSmall: { minHeight: 44, paddingHorizontal: Spacing.two + 4 },
-  buttonText: { fontSize: 16, fontWeight: '600' },
-  buttonTextSmall: { fontSize: 14 },
+  buttonText: { fontSize: 13, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 1.4 },
+  buttonTextSmall: { fontSize: 12, letterSpacing: 1.2 },
   field: { gap: Spacing.one + 2 },
-  label: { fontSize: 13, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.4 },
+  label: { fontSize: 11, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 1.6 },
   input: {
     borderWidth: 1,
-    borderRadius: 10,
+    borderRadius: 4,
     paddingHorizontal: 12,
     paddingVertical: 10,
     fontSize: 16,
@@ -582,10 +584,18 @@ const styles = StyleSheet.create({
   },
   inputMultiline: { minHeight: 88, textAlignVertical: 'top' },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
-  segments: { flexDirection: 'row', borderRadius: 12, padding: 3, gap: 3 },
-  segment: { flex: 1, minHeight: 40, borderRadius: 9, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 },
-  segmentText: { fontSize: 14, fontWeight: '600' },
-  chip: { borderWidth: 1, borderRadius: 20, paddingHorizontal: 14, minHeight: 40, justifyContent: 'center' },
+  segments: { flexDirection: 'row', borderBottomWidth: StyleSheet.hairlineWidth },
+  segment: {
+    flex: 1,
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 4,
+    borderBottomWidth: 2,
+    borderBottomColor: 'transparent',
+  },
+  segmentText: { fontSize: 12, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 1.2 },
+  chip: { borderWidth: 1, borderRadius: 4, paddingHorizontal: 14, minHeight: 40, justifyContent: 'center' },
   chipText: { fontSize: 14, fontWeight: '500' },
   toggleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   dateRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
@@ -603,10 +613,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.two,
-    borderRadius: 12,
+    borderRadius: 6,
+    borderWidth: StyleSheet.hairlineWidth,
     padding: Spacing.three,
   },
   listTitle: { fontSize: 16, fontWeight: '600' },
-  listIcon: { width: 36, height: 36, borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
+  listIcon: { width: 36, height: 36, borderRadius: 4, alignItems: 'center', justifyContent: 'center' },
   buttonContent: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
 });
