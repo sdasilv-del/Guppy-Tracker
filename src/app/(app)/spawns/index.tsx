@@ -41,6 +41,7 @@ export default function SpawnsScreen() {
   return (
     <Screen>
       <Button title="Record a spawn" icon={Icons.spawn} onPress={() => router.push('/spawns/new')} />
+      <Button title="Spawn results" icon={Icons.strain} variant="secondary" small onPress={() => router.push('/spawns/results')} />
       <ErrorText message={error} />
       <Section title={`Growing out (${growing.length})`}>
         {growing.length === 0 ? <Empty>No fry batches growing out. Record a spawn from a breeding group.</Empty> : null}

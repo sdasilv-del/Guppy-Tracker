@@ -121,6 +121,9 @@ export const EVALUATION_KINDS = [
 
 export type EvaluationKind = (typeof EVALUATION_KINDS)[number]['value'];
 
+// The standard new scores are given under. Old scores keep the year they were given.
+export const IHS_STANDARD_YEAR = 2023;
+
 // IHS 2023 point assignment (item 14). Keys match public.ihs_max_points in the database.
 export type IhsCategory = { key: string; part: string; label: string; max: number };
 

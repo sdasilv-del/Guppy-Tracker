@@ -29,6 +29,7 @@ import {
   type EvaluationKind,
   type IhsCategory,
   ihsCategories,
+  IHS_STANDARD_YEAR,
   ihsMaxTotal,
   labelOf,
   TAIL_STANDARDS,
@@ -40,12 +41,13 @@ import {
   deleteEvaluation,
   getEvaluation,
   getFish,
+  lockEvaluation,
   removeStoredPhotos,
   saveEvaluation,
   signedPhotoUrls,
   uploadPhoto,
 } from '@/lib/db';
-import { blankToNull, numberText, parseNumber, todayISO } from '@/lib/format';
+import { blankToNull, formatDate, numberText, parseNumber, todayISO } from '@/lib/format';
 import type { Evaluation, Fish } from '@/lib/types';
 import { useTheme } from '@/hooks/use-theme';
 import { useUnsavedChanges } from '@/hooks/use-unsaved-changes';
@@ -265,6 +267,7 @@ export default function EvaluationScreen() {
         placement: kind === 'official' ? blankToNull(placement) : null,
         photo_path: photoPath,
         notes: blankToNull(notes),
+        standard_year: existing?.standard_year ?? IHS_STANDARD_YEAR,
       });
       // A replaced photo is no longer used by anything.
       if (existing?.photo_path && photoPath !== existing.photo_path) await removeStoredPhotos([existing.photo_path]);
@@ -290,6 +293,30 @@ export default function EvaluationScreen() {
     ]);
   }
 
+  const locked = !!existing?.locked_at;
+  const unsaved = baseline !== null && snapshot !== baseline;
+
+  function confirmLock() {
+    if (!judge.trim()) {
+      setError("Enter the judge's name and save before locking.");
+      return;
+    }
+    Alert.alert(
+      'Lock and sign this score?',
+      `Signed by ${judge.trim()}. Once locked, nobody can change or delete it, so buyers and clubs can trust it.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Lock and sign',
+          onPress: () => {
+            allowLeave();
+            attempt(() => lockEvaluation(existing!.id), () => router.back(), "Couldn't lock").finally(blockLeave);
+          },
+        },
+      ],
+    );
+  }
+
   async function addPhoto(source: 'camera' | 'library') {
     const picked = await pickPhoto(source);
     if (picked) setPhoto(picked);
@@ -306,7 +333,17 @@ export default function EvaluationScreen() {
         <InfoRow label="Class" value={labelOf(TAIL_STANDARDS, klass.tail_standard as Fish['tail_standard'])} />
         <InfoRow label="Base colour" value={labelOf(BASE_COLOURS, klass.base_colour)} />
         <InfoRow label="Cover colour" value={klass.cover_colours.map((c) => labelOf(COVER_COLOURS, c)).join(', ')} />
+        <InfoRow label="Standard" value={`IHS ${existing?.standard_year ?? IHS_STANDARD_YEAR}`} />
       </Card>
+      {locked ? (
+        <Card style={{ borderWidth: 1, borderColor: theme.accent }}>
+          <Body style={styles.dq}>Locked and signed by {existing!.judge}</Body>
+          <Muted>
+            {`Signed ${formatDate(existing!.locked_at!.slice(0, 10))} · seal ${existing!.seal}. This score can't be changed or deleted.`}
+          </Muted>
+        </Card>
+      ) : null}
+      <View pointerEvents={locked ? 'none' : 'auto'} style={[styles.form, locked && styles.lockedForm]}>
 
       {dq.length > 0 ? (
         <Card style={{ borderWidth: 1, borderColor: theme.danger }}>
@@ -317,7 +354,12 @@ export default function EvaluationScreen() {
 
       <ChipSelect label="Kind" options={EVALUATION_KINDS} value={kind} onChange={(v) => v && setKind(v)} />
       <DateField label="Date" value={date} onChange={setDate} />
-      {kind === 'official' ? <Field label="Show or event" value={event} onChangeText={setEvent} /> : null}
+      {kind === 'official' ? (
+        <>
+          <Field label="Show or event" value={event} onChangeText={setEvent} />
+          <Muted>Official show results also appear under Shows on this fish and count toward season points.</Muted>
+        </>
+      ) : null}
       <Field
         label={kind === 'breeder' ? 'Scored by' : 'Judge'}
         value={judge}
@@ -379,7 +421,11 @@ export default function EvaluationScreen() {
         <Field label="Placement or award" value={placement} onChangeText={setPlacement} placeholder="e.g. 1st, Best of Show" />
       ) : null}
 
-      {shownPhoto ? <Image source={{ uri: shownPhoto }} style={styles.photo} contentFit="cover" /> : null}
+      {shownPhoto ? (
+        <Image source={{ uri: shownPhoto }} style={styles.photo} contentFit="cover" />
+      ) : (
+        <Muted>Add a photo of the fish today, so this score can be checked against how it looked.</Muted>
+      )}
       <View style={styles.buttons}>
         <View style={{ flex: 1 }}>
           <Button title="Take photo" icon={Icons.camera} variant="secondary" small onPress={() => addPhoto('camera')} />
@@ -389,9 +435,24 @@ export default function EvaluationScreen() {
         </View>
       </View>
       <Field label="Notes" value={notes} onChangeText={setNotes} multiline />
+      </View>
       <ErrorText message={error} />
-      <Button title={evalId ? 'Save changes' : 'Save evaluation'} onPress={save} busy={busy} />
-      {evalId ? <Button title="Delete evaluation" variant="danger" onPress={confirmDelete} /> : null}
+      {locked ? null : (
+        <>
+          <Button title={evalId ? 'Save changes' : 'Save evaluation'} onPress={save} busy={busy} />
+          {evalId ? (
+            <Button
+              title="Lock and sign"
+              icon={Icons.done}
+              variant="secondary"
+              onPress={confirmLock}
+              disabled={unsaved}
+            />
+          ) : null}
+          {evalId && unsaved ? <Muted>Save your changes before locking.</Muted> : null}
+          {evalId ? <Button title="Delete evaluation" variant="danger" onPress={confirmDelete} /> : null}
+        </>
+      )}
     </Screen>
   );
 }
@@ -413,4 +474,6 @@ const styles = StyleSheet.create({
   sheetTitle: { fontSize: 24, fontWeight: '800' },
   photo: { width: '100%', aspectRatio: 4 / 3, borderRadius: 12 },
   buttons: { flexDirection: 'row', gap: Spacing.two },
+  form: { gap: Spacing.three },
+  lockedForm: { opacity: 0.7 },
 });

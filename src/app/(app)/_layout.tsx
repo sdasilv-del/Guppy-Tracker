@@ -6,6 +6,7 @@ export default function AppLayout() {
       <Stack.Screen name="(tabs)" options={{ headerShown: false, title: 'Home' }} />
       <Stack.Screen name="profile" options={{ title: 'Profile' }} />
       <Stack.Screen name="export" options={{ title: 'Export and print' }} />
+      <Stack.Screen name="points" options={{ title: 'Season points' }} />
       <Stack.Screen name="reminders/edit" options={{ title: 'Reminder' }} />
       <Stack.Screen
         name="reminders/actions"
@@ -35,22 +36,28 @@ export default function AppLayout() {
         }}
       />
       <Stack.Screen name="fish/new" options={{ title: 'New fish' }} />
+      <Stack.Screen name="fish/bulk" options={{ title: 'Several fish' }} />
       <Stack.Screen name="fish/[id]/index" options={{ title: 'Fish' }} />
       <Stack.Screen name="fish/[id]/edit" options={{ title: 'Edit fish' }} />
       <Stack.Screen name="fish/[id]/move" options={{ title: 'Move fish' }} />
       <Stack.Screen name="fish/[id]/pedigree" options={{ title: 'Pedigree' }} />
       <Stack.Screen name="fish/[id]/trait" options={{ title: 'Trait' }} />
       <Stack.Screen name="fish/[id]/evaluation" options={{ title: 'IHS evaluation' }} />
+      <Stack.Screen name="fish/[id]/scores" options={{ title: 'Score history' }} />
+      <Stack.Screen name="fish/[id]/genes" options={{ title: 'Colour genes' }} />
       <Stack.Screen name="fish/[id]/show" options={{ title: 'Show entry' }} />
       <Stack.Screen name="fish/[id]/sale" options={{ title: 'Sale' }} />
       <Stack.Screen name="groups/index" options={{ title: 'Breeding groups' }} />
       <Stack.Screen name="groups/new" options={{ title: 'New breeding group' }} />
       <Stack.Screen name="groups/pair" options={{ title: 'Trial pairing' }} />
+      <Stack.Screen name="plans/index" options={{ title: 'Line plans' }} />
+      <Stack.Screen name="plans/[id]" options={{ title: 'Line plan' }} />
       <Stack.Screen name="groups/[id]/index" options={{ title: 'Breeding group' }} />
       <Stack.Screen name="groups/[id]/edit" options={{ title: 'Edit group' }} />
       <Stack.Screen name="strains/[name]" options={{ title: 'Strain' }} />
       <Stack.Screen name="spawns/index" options={{ title: 'Spawns' }} />
       <Stack.Screen name="spawns/new" options={{ title: 'New spawn' }} />
+      <Stack.Screen name="spawns/results" options={{ title: 'Spawn results' }} />
       <Stack.Screen name="spawns/[id]/index" options={{ title: 'Spawn' }} />
       <Stack.Screen name="spawns/[id]/edit" options={{ title: 'Edit spawn' }} />
       <Stack.Screen name="spawns/[id]/event" options={{ title: 'Batch log' }} />

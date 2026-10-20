@@ -210,6 +210,12 @@ export default function HomeScreen() {
         />
       ) : null}
       <ListRow
+        icon={Icons.show}
+        title="Season points"
+        subtitle="Show standings for each class"
+        onPress={() => router.push('/points')}
+      />
+      <ListRow
         icon={Icons.export}
         title="Export and print"
         subtitle="Spreadsheets and show entry lists"

@@ -41,7 +41,9 @@ import {
   listSales,
   listShowEntries,
   listFish,
+  listFishGenes,
   listFishTraits,
+  listGenes,
   listGroups,
   listFishMoves,
   listFishPhotos,
@@ -51,6 +53,7 @@ import {
   signedPhotoUrls,
 } from '@/lib/db';
 import { formatAge, formatDate } from '@/lib/format';
+import { copiesLabel, inferredCarrier } from '@/lib/genetics';
 import type { FishPhoto } from '@/lib/types';
 import { formatInbreeding, makeKinship } from '@/lib/kinship';
 import { useFocusData } from '@/lib/use-data';
@@ -63,7 +66,7 @@ export default function FishScreen() {
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const { data, error, reload } = useFocusData(async () => {
-    const [allFish, tanks, photos, moves, spawns, groups, groupIds, traitRecords, evaluations, traits, shows, sales] =
+    const [allFish, tanks, photos, moves, spawns, groups, groupIds, traitRecords, evaluations, traits, shows, sales, genes, geneRecords] =
       await Promise.all([
       listFish(),
       listTanks(),
@@ -77,8 +80,13 @@ export default function FishScreen() {
       listTraits(),
       listShowEntries(id),
       listSales(id),
+      listGenes(),
+      listFishGenes(),
     ]);
-    const urls = await signedPhotoUrls(photos.map((p) => p.storage_path));
+    const urls = await signedPhotoUrls([
+      ...photos.map((p) => p.storage_path),
+      ...evaluations.map((e) => e.photo_path).filter((p): p is string => !!p),
+    ]);
     return {
       fish: allFish.find((f) => f.id === id) ?? null,
       allFish,
@@ -92,6 +100,8 @@ export default function FishScreen() {
       evaluations,
       shows,
       sales,
+      genes,
+      geneRecords,
       traitNames: Object.fromEntries(traits.map((t) => [t.id, t.name])),
     };
   });
@@ -264,6 +274,33 @@ export default function FishScreen() {
       </Section>
 
       <Section
+        title="Colour genes"
+        action={
+          <Button title="Edit genes" small onPress={() => router.push({ pathname: '/fish/[id]/genes', params: { id } })} />
+        }>
+        {(() => {
+          const copiesOf = (fid: string, gid: string) =>
+            data.geneRecords.find((r) => r.fish_id === fid && r.gene_id === gid)?.copies;
+          const lines = data.genes
+            .map((g) => {
+              const c = copiesOf(id, g.id);
+              if (c !== undefined) return `${g.name}: ${copiesLabel(g.mode, fish.sex, c)}`;
+              return inferredCarrier(fish, g, (fid) => copiesOf(fid, g.id)) ? `${g.name}: Carrier (from a parent)` : null;
+            })
+            .filter((l): l is string => !!l);
+          return lines.length === 0 ? (
+            <Empty>No genes recorded. Record genes like blond or albino to predict what pairings will throw.</Empty>
+          ) : (
+            <Card>
+              {lines.map((l) => (
+                <Body key={l}>{l}</Body>
+              ))}
+            </Card>
+          );
+        })()}
+      </Section>
+
+      <Section
         title="IHS evaluations"
         action={
           <Button
@@ -280,6 +317,7 @@ export default function FishScreen() {
             title={`${e.total} / ${ihsMaxTotal(e.sex)} · ${formatDate(e.evaluated_on)}`}
             subtitle={[
               isDisqualified(e.sex, e.score_reasons ?? {}) ? 'Disqualified' : null,
+              e.locked_at ? 'Signed' : null,
               labelOf(EVALUATION_KINDS, e.kind),
               e.event,
               e.placement,
@@ -287,21 +325,29 @@ export default function FishScreen() {
             ]
               .filter(Boolean)
               .join(' · ')}
+            right={
+              e.photo_path && data.urls[e.photo_path] ? (
+                <Image source={{ uri: data.urls[e.photo_path] }} style={styles.evalThumb} contentFit="cover" />
+              ) : undefined
+            }
             onPress={() => router.push({ pathname: '/fish/[id]/evaluation', params: { id, evalId: e.id } })}
           />
         ))}
+        {data.evaluations.length > 0 ? (
+          <Button
+            title="Score history with photos"
+            icon={Icons.strain}
+            variant="secondary"
+            small
+            onPress={() => router.push({ pathname: '/fish/[id]/scores', params: { id } })}
+          />
+        ) : null}
       </Section>
 
-      <Section
-        title="Shows"
-        action={
-          <Button
-            title="Add entry"
-            small
-            onPress={() => router.push({ pathname: '/fish/[id]/show', params: { id } })}
-          />
-        }>
-        {data.shows.length === 0 ? <Empty>No show entries yet.</Empty> : null}
+      <Section title="Shows">
+        {data.shows.length === 0 ? (
+          <Empty>Shows appear here when you score this fish as an official show result.</Empty>
+        ) : null}
         {data.shows.map((e) => (
           <ListRow
             icon={Icons.show}
@@ -423,4 +469,5 @@ const styles = StyleSheet.create({
   buttons: { flexDirection: 'row', gap: Spacing.two },
   half: { flex: 1 },
   link: { textDecorationLine: 'underline', fontWeight: '500' },
+  evalThumb: { width: 44, height: 44, borderRadius: 6 },
 });

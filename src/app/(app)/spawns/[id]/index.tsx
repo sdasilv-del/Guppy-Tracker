@@ -1,28 +1,32 @@
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
 
+import { GenePredictions } from '@/components/gene-predictions';
 import { tankLabel } from '@/components/group-form';
 import { Body, Button, Card, Empty, ErrorText, InfoRow, ListRow, Loading, Muted, Screen, Section } from '@/components/ui';
 import { Icons } from '@/constants/icons';
 import { Spacing } from '@/constants/theme';
 import { FISH_STATUSES, labelOf, SEXES, SPAWN_EVENT_KINDS, type SpawnEventKind } from '@/lib/constants';
-import { getGroup, getSpawn, listFish, listPicks, listSpawnEvents, listTanks } from '@/lib/db';
-import { formatAge, formatDate } from '@/lib/format';
-import { eventSummary, summarizeBatch } from '@/lib/spawn';
+import { getGroup, getSpawn, listFish, listFishGenes, listGenes, listPicks, listSpawnEvents, listTanks } from '@/lib/db';
+import { predict } from '@/lib/genetics';
+import { formatAge, formatDate, todayISO } from '@/lib/format';
+import { eventSummary, percent, spawnResult, summarizeBatch } from '@/lib/spawn';
 import { useFocusData } from '@/lib/use-data';
 
 export default function SpawnScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { data, error } = useFocusData(async () => {
     const spawn = await getSpawn(id);
-    const [group, events, picks, fish, tanks] = await Promise.all([
+    const [group, events, picks, fish, tanks, genes, geneRecords] = await Promise.all([
       spawn?.group_id ? getGroup(spawn.group_id) : null,
       listSpawnEvents([id]),
       listPicks(id),
       listFish(),
       listTanks(),
+      listGenes(),
+      listFishGenes(),
     ]);
-    return { spawn, group, events, picks, fish, tanks };
+    return { spawn, group, events, picks, fish, tanks, genes, geneRecords };
   });
 
   if (!data && !error) return <Loading />;
@@ -38,6 +42,7 @@ export default function SpawnScreen() {
   const byId = Object.fromEntries(data.fish.map((f) => [f.id, f]));
   const tankNames = Object.fromEntries(data.tanks.map((t) => [t.id, tankLabel(t)]));
   const batch = summarizeBatch(spawn, data.events, data.picks);
+  const result = spawnResult(spawn, data.events, data.picks, todayISO());
   const sire = spawn.sire_id ? byId[spawn.sire_id] : null;
   const dam = spawn.dam_id ? byId[spawn.dam_id] : null;
   const openFish = (fid: string) => router.push({ pathname: '/fish/[id]', params: { id: fid } });
@@ -54,6 +59,9 @@ export default function SpawnScreen() {
         <Muted>fry in the batch now, of {spawn.fry_count} born</Muted>
         <Muted>
           {batch.picked} picked · {batch.culled} culled · {batch.lost} lost
+        </Muted>
+        <Muted>
+          Survival: {percent(result.survival4)} at 4 weeks · {percent(result.survival8)} at 8 weeks
         </Muted>
         {batch.sexing ? (
           <Muted>
@@ -116,6 +124,9 @@ export default function SpawnScreen() {
         <InfoRow label="Generation" value={spawn.generation} />
         {spawn.notes ? <Muted>{spawn.notes}</Muted> : null}
       </Card>
+      {sire && dam ? (
+        <GenePredictions title="Expected colour genes" predictions={predict(sire, dam, data.genes, data.geneRecords)} />
+      ) : null}
       <Button
         title="Edit spawn"
         variant="secondary"

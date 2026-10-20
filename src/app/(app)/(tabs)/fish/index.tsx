@@ -4,7 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { Button, ChipSelect, Empty, ErrorText, Field, Loading, Muted, Screen } from '@/components/ui';
+import { Button, ChipSelect, Empty, ErrorText, Field, Icon, Loading, Muted, Screen } from '@/components/ui';
 import { Icons } from '@/constants/icons';
 import { Spacing } from '@/constants/theme';
 import { FISH_STATUSES, INACTIVE_STATUSES, labelOf, SEXES, type Sex, TAIL_OPTIONS, type TailStandard } from '@/lib/constants';
@@ -39,6 +39,19 @@ export default function FishListScreen() {
   const [query, setQuery] = useState('');
   const [filters, setFilters] = useState<Filters>(NO_FILTERS);
   const [showMore, setShowMore] = useState(false);
+  // Select mode, for moving, changing or selling several fish at once.
+  const [selecting, setSelecting] = useState(false);
+  const [selected, setSelected] = useState<string[]>([]);
+  const toggle = (id: string) =>
+    setSelected((cur) => (cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]));
+  const stopSelecting = () => {
+    setSelecting(false);
+    setSelected([]);
+  };
+  const bulk = (action: 'move' | 'status' | 'sale') => {
+    router.push({ pathname: '/fish/bulk', params: { ids: selected.join(','), action } });
+    stopSelecting();
+  };
   const set = (patch: Partial<Filters>) => {
     const next = { ...filters, ...patch };
     setFilters(next);
@@ -126,16 +139,38 @@ export default function FishListScreen() {
         </>
       ) : null}
       {data ? <Muted>{`${shown.length} fish shown`}</Muted> : null}
+      {selecting ? (
+        <View style={styles.selectBar}>
+          <Muted>{`${selected.length} selected`}</Muted>
+          <View style={styles.actions}>
+            <Button title={`Select all ${shown.length}`} variant="secondary" small onPress={() => setSelected(shown.map((f) => f.id))} />
+            <Button title="Cancel" variant="secondary" small onPress={stopSelecting} />
+          </View>
+          <View style={styles.actions}>
+            <Button title="Move" icon={Icons.move} small onPress={() => bulk('move')} disabled={selected.length === 0} />
+            <Button title="Status" icon={Icons.edit} small onPress={() => bulk('status')} disabled={selected.length === 0} />
+            <Button title="Sell" icon={Icons.sale} small onPress={() => bulk('sale')} disabled={selected.length === 0} />
+          </View>
+        </View>
+      ) : shown.length > 1 ? (
+        <Button title="Select several" icon={Icons.done} variant="secondary" small onPress={() => setSelecting(true)} />
+      ) : null}
       {shown.length === 0 ? (
         <Empty>{data?.fish.length ? 'No fish match.' : 'No fish yet. Add your first fish.'}</Empty>
       ) : null}
       {shown.map((f) => (
         <Pressable
           key={f.id}
-          onPress={() => router.push({ pathname: '/fish/[id]', params: { id: f.id } })}
+          onPress={() => (selecting ? toggle(f.id) : router.push({ pathname: '/fish/[id]', params: { id: f.id } }))}
+          onLongPress={() => {
+            setSelecting(true);
+            toggle(f.id);
+          }}
+          accessibilityState={selecting ? { selected: selected.includes(f.id) } : undefined}
           style={({ pressed }) => [
             styles.row,
             { backgroundColor: theme.backgroundElement, opacity: pressed ? 0.75 : 1 },
+            selecting && selected.includes(f.id) && { borderWidth: 2, borderColor: theme.accent },
           ]}>
           {data?.thumbs[f.id] ? (
             <Image source={{ uri: data.thumbs[f.id] }} style={styles.thumb} contentFit="cover" />
@@ -153,6 +188,13 @@ export default function FishListScreen() {
                 .join(' · ')}
             </Text>
           </View>
+          {selecting ? (
+            <Icon
+              name={selected.includes(f.id) ? Icons.done : Icons.circle}
+              size={24}
+              color={selected.includes(f.id) ? theme.accent : theme.textSecondary}
+            />
+          ) : null}
         </Pressable>
       ))}
     </Screen>
@@ -163,4 +205,6 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three, padding: Spacing.two + 4, borderRadius: 12 },
   thumb: { width: 64, height: 64, borderRadius: 8 },
   title: { fontSize: 16, fontWeight: '600' },
+  selectBar: { gap: Spacing.two },
+  actions: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
 });

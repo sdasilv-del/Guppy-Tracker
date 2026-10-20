@@ -1,5 +1,8 @@
 import { decode } from 'base64-arraybuffer';
 
+import { type FishStatus, INACTIVE_STATUSES } from '@/lib/constants';
+import type { FishGene, Gene, GeneMode } from '@/lib/genetics';
+import type { LinePlan } from '@/lib/line-plan';
 import { supabase } from '@/lib/supabase';
 import type {
   BreedingGroup,
@@ -231,6 +234,13 @@ export async function deleteFish(id: string): Promise<void> {
 export async function moveFish(fishIds: string[], tankId: string | null): Promise<void> {
   if (fishIds.length === 0) return;
   must(await supabase.from('fish').update({ tank_id: tankId }).in('id', fishIds));
+}
+
+// Status changes for several fish at once. Sold, culled and deceased fish leave their tanks.
+export async function setFishStatus(fishIds: string[], status: FishStatus): Promise<void> {
+  if (fishIds.length === 0) return;
+  const patch = INACTIVE_STATUSES.includes(status) ? { status, tank_id: null } : { status };
+  must(await supabase.from('fish').update(patch).in('id', fishIds));
 }
 
 export async function listFishMoves(fishId: string): Promise<FishMove[]> {
@@ -534,11 +544,19 @@ export async function getEvaluation(id: string): Promise<Evaluation | null> {
 
 // The total is added up by the database from the scores.
 // The male link and lengths are no longer edited, so a save leaves any old values as they were.
-export type EvaluationInput = Omit<Evaluation, 'id' | 'created_at' | 'total' | 'male_id' | 'female_length_mm' | 'male_length_mm'>;
+export type EvaluationInput = Omit<
+  Evaluation,
+  'id' | 'created_at' | 'total' | 'male_id' | 'female_length_mm' | 'male_length_mm' | 'locked_at' | 'seal'
+>;
 
 export async function saveEvaluation(id: string | null, input: EvaluationInput): Promise<void> {
   if (id) must(await supabase.from('evaluations').update(input).eq('id', id));
   else must(await supabase.from('evaluations').insert(input));
+}
+
+// Signs a score. The database checks there's a judge's name, adds the seal, and refuses any later change.
+export async function lockEvaluation(id: string): Promise<void> {
+  must(await supabase.from('evaluations').update({ locked_at: new Date().toISOString() }).eq('id', id));
 }
 
 export async function removeStoredPhotos(paths: string[]): Promise<void> {
@@ -551,6 +569,8 @@ export async function deleteEvaluation(evaluation: Evaluation): Promise<void> {
 }
 
 // Show entries ------------------------------------------------------------------
+// The database adds an entry for every official show score. Only those are listed; hand-made entries
+// from before that are kept but not shown.
 
 export async function listShowEntries(fishId: string): Promise<ShowEntry[]> {
   return must(
@@ -558,6 +578,7 @@ export async function listShowEntries(fishId: string): Promise<ShowEntry[]> {
       .from('show_entries')
       .select('*')
       .eq('fish_id', fishId)
+      .not('evaluation_id', 'is', null)
       .order('shown_on', { ascending: false })
       .order('created_at', { ascending: false }),
   );
@@ -568,6 +589,7 @@ export async function listAllShowEntries(): Promise<ShowEntry[]> {
     await supabase
       .from('show_entries')
       .select('*')
+      .not('evaluation_id', 'is', null)
       .order('shown_on', { ascending: false })
       .order('created_at', { ascending: false }),
   );
@@ -577,15 +599,11 @@ export async function getShowEntry(id: string): Promise<ShowEntry | null> {
   return must(await supabase.from('show_entries').select('*').eq('id', id).maybeSingle());
 }
 
-export type ShowEntryInput = Omit<ShowEntry, 'id' | 'created_at'>;
+export type ShowEntryInput = Omit<ShowEntry, 'id' | 'created_at' | 'evaluation_id'>;
 
 export async function saveShowEntry(id: string | null, input: ShowEntryInput): Promise<void> {
   if (id) must(await supabase.from('show_entries').update(input).eq('id', id));
   else must(await supabase.from('show_entries').insert(input));
-}
-
-export async function deleteShowEntry(id: string): Promise<void> {
-  must(await supabase.from('show_entries').delete().eq('id', id));
 }
 
 // Sales ---------------------------------------------------------------------------
@@ -610,6 +628,13 @@ export async function saveSale(id: string | null, input: SaleInput): Promise<voi
   }
   must(await supabase.from('sales').insert(input));
   must(await supabase.from('fish').update({ status: 'sold', tank_id: null }).eq('id', input.fish_id));
+}
+
+// One sale per fish, all on the same terms, e.g. a group of fry sold to one buyer.
+export async function addSales(inputs: SaleInput[]): Promise<void> {
+  if (inputs.length === 0) return;
+  must(await supabase.from('sales').insert(inputs));
+  must(await supabase.from('fish').update({ status: 'sold', tank_id: null }).in('id', inputs.map((i) => i.fish_id)));
 }
 
 export async function deleteSale(id: string): Promise<void> {
@@ -647,4 +672,60 @@ export async function snoozeReminder(key: string, until: string): Promise<void> 
       .from('reminder_snoozes')
       .upsert({ reminder_key: key, snoozed_until: until }, { onConflict: 'user_id,reminder_key' }),
   );
+}
+
+// Colour genes ------------------------------------------------------------------
+
+export async function listGenes(): Promise<Gene[]> {
+  return must(await supabase.from('genes').select('id, name, mode, notes').order('name'));
+}
+
+export async function createGene(name: string, mode: GeneMode): Promise<Gene> {
+  return must(await supabase.from('genes').insert({ name: name.trim(), mode }).select('id, name, mode, notes').single());
+}
+
+export async function deleteGene(id: string): Promise<void> {
+  must(await supabase.from('genes').delete().eq('id', id));
+}
+
+export async function listFishGenes(fishIds?: string[]): Promise<FishGene[]> {
+  let query = supabase.from('fish_genes').select('fish_id, gene_id, copies');
+  if (fishIds) query = query.in('fish_id', fishIds);
+  return must(await query);
+}
+
+// Null means not known, which removes the record.
+export async function setFishGene(fishId: string, geneId: string, copies: number | null): Promise<void> {
+  if (copies === null) {
+    must(await supabase.from('fish_genes').delete().eq('fish_id', fishId).eq('gene_id', geneId));
+    return;
+  }
+  must(
+    await supabase
+      .from('fish_genes')
+      .upsert({ fish_id: fishId, gene_id: geneId, copies, updated_at: new Date().toISOString() }, { onConflict: 'fish_id,gene_id' }),
+  );
+}
+
+// Line plans ----------------------------------------------------------------------
+
+export async function listLinePlans(): Promise<LinePlan[]> {
+  return must(await supabase.from('line_plans').select('id, name, sire_id, dam_id, steps, notes, updated_at').order('updated_at', { ascending: false }));
+}
+
+export async function getLinePlan(id: string): Promise<LinePlan | null> {
+  return must(
+    await supabase.from('line_plans').select('id, name, sire_id, dam_id, steps, notes, updated_at').eq('id', id).maybeSingle(),
+  );
+}
+
+export type LinePlanInput = Omit<LinePlan, 'id' | 'updated_at'>;
+
+export async function saveLinePlan(id: string | null, input: LinePlanInput): Promise<void> {
+  if (id) must(await supabase.from('line_plans').update(input).eq('id', id));
+  else must(await supabase.from('line_plans').insert(input));
+}
+
+export async function deleteLinePlan(id: string): Promise<void> {
+  must(await supabase.from('line_plans').delete().eq('id', id));
 }

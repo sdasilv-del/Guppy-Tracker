@@ -2,57 +2,25 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { StyleSheet, Text } from 'react-native';
 
-import { FishPicker } from '@/components/fish-picker';
-import { Body, Button, Card, ErrorText, ListRow, Loading, Muted, Screen, Section } from '@/components/ui';
+import { Choice } from '@/components/fish-choice';
+import { GenePredictions } from '@/components/gene-predictions';
+import { Body, Button, Card, ErrorText, ListRow, Loading, Muted, Screen } from '@/components/ui';
 import { Icons } from '@/constants/icons';
 import { useTheme } from '@/hooks/use-theme';
 import { INACTIVE_STATUSES } from '@/lib/constants';
-import { listFish } from '@/lib/db';
-import { closeRelations, formatInbreeding, makeKinship, sharedAncestors } from '@/lib/kinship';
-import type { Fish } from '@/lib/types';
+import { listFish, listFishGenes, listGenes } from '@/lib/db';
+import { predict } from '@/lib/genetics';
+import { closeRelations, formatInbreeding, inbreedingMeaning, makeKinship, sharedAncestors } from '@/lib/kinship';
 import { useFocusData } from '@/lib/use-data';
-
-// What the number means, so breeders don't have to remember the reference points.
-function meaning(value: number): string {
-  if (value === 0) return 'No shared ancestors on record.';
-  if (value < 0.0625) return 'Lower than first cousins. Usually safe for line breeding.';
-  if (value < 0.125) return 'About first cousins (6.25%).';
-  if (value < 0.25) return 'About half siblings (12.5%). Watch for weaker fry.';
-  return 'Brother and sister level (25%) or closer. Expect weaker fry unless the line is tested.';
-}
-
-function Choice({
-  label,
-  fish,
-  chosen,
-  onChoose,
-}: {
-  label: string;
-  fish: Fish[];
-  chosen: Fish | undefined;
-  onChoose: (id: string | null) => void;
-}) {
-  if (chosen) {
-    return (
-      <ListRow
-        icon={Icons.fish}
-        title={`${label}: ${chosen.fish_code}`}
-        subtitle={[chosen.name, chosen.strain, chosen.generation].filter(Boolean).join(' · ') || 'Tap to change'}
-        onPress={() => onChoose(null)}
-      />
-    );
-  }
-  return (
-    <Section title={`Choose a ${label.toLowerCase()}`}>
-      <FishPicker fish={fish} selected={[]} onToggle={onChoose} emptyText={`No ${label.toLowerCase()}s found.`} />
-    </Section>
-  );
-}
 
 // Try any male and female and see how inbred their fry would be, before setting up a group.
 export default function TrialPairingScreen() {
   const theme = useTheme();
-  const { data: allFish, error } = useFocusData(listFish);
+  const { data, error } = useFocusData(async () => {
+    const [fish, genes, records] = await Promise.all([listFish(), listGenes(), listFishGenes()]);
+    return { fish, genes, records };
+  });
+  const allFish = data?.fish;
   const [maleId, setMaleId] = useState<string | null>(null);
   const [femaleId, setFemaleId] = useState<string | null>(null);
 
@@ -101,7 +69,7 @@ export default function TrialPairingScreen() {
         <Card>
           <Muted>Fry inbreeding</Muted>
           <Text style={[styles.big, { color: theme.text }]}>{formatInbreeding(value)}</Text>
-          <Body>{meaning(value)}</Body>
+          <Body>{inbreedingMeaning(value)}</Body>
           {relations.map((r) => (
             <Muted key={r}>{r}</Muted>
           ))}
@@ -116,6 +84,7 @@ export default function TrialPairingScreen() {
           />
         </Card>
       ) : null}
+      {male && female && data ? <GenePredictions predictions={predict(male, female, data.genes, data.records)} /> : null}
     </Screen>
   );
 }

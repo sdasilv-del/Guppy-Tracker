@@ -124,7 +124,9 @@ const CERT_HEADINGS = ['Fish', 'Parents', 'Grandparents', 'Great-grandparents'];
 // A one-page pedigree to hand to a buyer: the fish's details and three generations of ancestors.
 // The evaluation to show off: the highest share of the maximum, official results first on a tie.
 export function bestEvaluation(evaluations: Evaluation[]): Evaluation | null {
-  const rank = (e: Evaluation) => e.total / ihsMaxTotal(e.sex) + (e.kind === 'official' ? 1e-6 : 0);
+  // On a tie, a signed score wins, then an official one.
+  const rank = (e: Evaluation) =>
+    e.total / ihsMaxTotal(e.sex) + (e.locked_at ? 2e-6 : 0) + (e.kind === 'official' ? 1e-6 : 0);
   return evaluations.reduce<Evaluation | null>((best, e) => (!best || rank(e) > rank(best) ? e : best), null);
 }
 
@@ -174,6 +176,8 @@ export function certificateHtml(
             labelOf(EVALUATION_KINDS, extras.best.kind),
             extras.best.event,
             formatDate(extras.best.evaluated_on),
+            `IHS ${extras.best.standard_year ?? 2023}`,
+            extras.best.locked_at ? `signed by ${extras.best.judge}, seal ${extras.best.seal}` : null,
           ]
             .filter(Boolean)
             .join(', ')

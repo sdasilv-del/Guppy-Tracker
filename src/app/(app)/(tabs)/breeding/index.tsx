@@ -59,6 +59,7 @@ export default function BreedingScreen() {
           <Button title="Start a group" icon={Icons.group} small onPress={() => router.push('/groups/new')} />
           <Button title="All groups" small variant="secondary" onPress={() => router.push('/groups')} />
           <Button title="Trial pairing" small variant="secondary" onPress={() => router.push('/groups/pair')} />
+          <Button title="Line planner" small variant="secondary" onPress={() => router.push('/plans')} />
         </View>
       </Section>
 
@@ -78,6 +79,7 @@ export default function BreedingScreen() {
         <View style={styles.actions}>
           <Button title="Record a spawn" icon={Icons.spawn} small onPress={() => router.push('/spawns/new')} />
           <Button title="All spawns" small variant="secondary" onPress={() => router.push('/spawns')} />
+          <Button title="Results" small variant="secondary" onPress={() => router.push('/spawns/results')} />
         </View>
       </Section>
 
