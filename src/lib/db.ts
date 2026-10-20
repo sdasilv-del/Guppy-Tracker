@@ -1,6 +1,7 @@
 import { decode } from 'base64-arraybuffer';
 
 import { type FishStatus, INACTIVE_STATUSES } from '@/lib/constants';
+import type { FishGene, Gene, GeneMode } from '@/lib/genetics';
 import { supabase } from '@/lib/supabase';
 import type {
   BreedingGroup,
@@ -669,5 +670,38 @@ export async function snoozeReminder(key: string, until: string): Promise<void> 
     await supabase
       .from('reminder_snoozes')
       .upsert({ reminder_key: key, snoozed_until: until }, { onConflict: 'user_id,reminder_key' }),
+  );
+}
+
+// Colour genes ------------------------------------------------------------------
+
+export async function listGenes(): Promise<Gene[]> {
+  return must(await supabase.from('genes').select('id, name, mode, notes').order('name'));
+}
+
+export async function createGene(name: string, mode: GeneMode): Promise<Gene> {
+  return must(await supabase.from('genes').insert({ name: name.trim(), mode }).select('id, name, mode, notes').single());
+}
+
+export async function deleteGene(id: string): Promise<void> {
+  must(await supabase.from('genes').delete().eq('id', id));
+}
+
+export async function listFishGenes(fishIds?: string[]): Promise<FishGene[]> {
+  let query = supabase.from('fish_genes').select('fish_id, gene_id, copies');
+  if (fishIds) query = query.in('fish_id', fishIds);
+  return must(await query);
+}
+
+// Null means not known, which removes the record.
+export async function setFishGene(fishId: string, geneId: string, copies: number | null): Promise<void> {
+  if (copies === null) {
+    must(await supabase.from('fish_genes').delete().eq('fish_id', fishId).eq('gene_id', geneId));
+    return;
+  }
+  must(
+    await supabase
+      .from('fish_genes')
+      .upsert({ fish_id: fishId, gene_id: geneId, copies, updated_at: new Date().toISOString() }, { onConflict: 'fish_id,gene_id' }),
   );
 }

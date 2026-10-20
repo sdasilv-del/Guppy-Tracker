@@ -127,6 +127,8 @@ const TABLE_NAMES: Record<string, string> = {
   care_logs: 'care log',
   custom_reminders: 'reminder',
   reminder_snoozes: 'snooze',
+  genes: 'gene',
+  fish_genes: 'fish gene',
 };
 
 function describe(url: string, method: string) {

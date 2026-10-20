@@ -3,11 +3,13 @@ import { useState } from 'react';
 import { StyleSheet, Text } from 'react-native';
 
 import { FishPicker } from '@/components/fish-picker';
+import { GenePredictions } from '@/components/gene-predictions';
 import { Body, Button, Card, ErrorText, ListRow, Loading, Muted, Screen, Section } from '@/components/ui';
 import { Icons } from '@/constants/icons';
 import { useTheme } from '@/hooks/use-theme';
 import { INACTIVE_STATUSES } from '@/lib/constants';
-import { listFish } from '@/lib/db';
+import { listFish, listFishGenes, listGenes } from '@/lib/db';
+import { predict } from '@/lib/genetics';
 import { closeRelations, formatInbreeding, makeKinship, sharedAncestors } from '@/lib/kinship';
 import type { Fish } from '@/lib/types';
 import { useFocusData } from '@/lib/use-data';
@@ -52,7 +54,11 @@ function Choice({
 // Try any male and female and see how inbred their fry would be, before setting up a group.
 export default function TrialPairingScreen() {
   const theme = useTheme();
-  const { data: allFish, error } = useFocusData(listFish);
+  const { data, error } = useFocusData(async () => {
+    const [fish, genes, records] = await Promise.all([listFish(), listGenes(), listFishGenes()]);
+    return { fish, genes, records };
+  });
+  const allFish = data?.fish;
   const [maleId, setMaleId] = useState<string | null>(null);
   const [femaleId, setFemaleId] = useState<string | null>(null);
 
@@ -116,6 +122,7 @@ export default function TrialPairingScreen() {
           />
         </Card>
       ) : null}
+      {male && female && data ? <GenePredictions predictions={predict(male, female, data.genes, data.records)} /> : null}
     </Screen>
   );
 }

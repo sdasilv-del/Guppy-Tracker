@@ -41,7 +41,9 @@ import {
   listSales,
   listShowEntries,
   listFish,
+  listFishGenes,
   listFishTraits,
+  listGenes,
   listGroups,
   listFishMoves,
   listFishPhotos,
@@ -51,6 +53,7 @@ import {
   signedPhotoUrls,
 } from '@/lib/db';
 import { formatAge, formatDate } from '@/lib/format';
+import { copiesLabel, inferredCarrier } from '@/lib/genetics';
 import type { FishPhoto } from '@/lib/types';
 import { formatInbreeding, makeKinship } from '@/lib/kinship';
 import { useFocusData } from '@/lib/use-data';
@@ -63,7 +66,7 @@ export default function FishScreen() {
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const { data, error, reload } = useFocusData(async () => {
-    const [allFish, tanks, photos, moves, spawns, groups, groupIds, traitRecords, evaluations, traits, shows, sales] =
+    const [allFish, tanks, photos, moves, spawns, groups, groupIds, traitRecords, evaluations, traits, shows, sales, genes, geneRecords] =
       await Promise.all([
       listFish(),
       listTanks(),
@@ -77,6 +80,8 @@ export default function FishScreen() {
       listTraits(),
       listShowEntries(id),
       listSales(id),
+      listGenes(),
+      listFishGenes(),
     ]);
     const urls = await signedPhotoUrls([
       ...photos.map((p) => p.storage_path),
@@ -95,6 +100,8 @@ export default function FishScreen() {
       evaluations,
       shows,
       sales,
+      genes,
+      geneRecords,
       traitNames: Object.fromEntries(traits.map((t) => [t.id, t.name])),
     };
   });
@@ -264,6 +271,33 @@ export default function FishScreen() {
             onPress={() => router.push({ pathname: '/fish/[id]/trait', params: { id, recordId: t.id } })}
           />
         ))}
+      </Section>
+
+      <Section
+        title="Colour genes"
+        action={
+          <Button title="Edit genes" small onPress={() => router.push({ pathname: '/fish/[id]/genes', params: { id } })} />
+        }>
+        {(() => {
+          const copiesOf = (fid: string, gid: string) =>
+            data.geneRecords.find((r) => r.fish_id === fid && r.gene_id === gid)?.copies;
+          const lines = data.genes
+            .map((g) => {
+              const c = copiesOf(id, g.id);
+              if (c !== undefined) return `${g.name}: ${copiesLabel(g.mode, fish.sex, c)}`;
+              return inferredCarrier(fish, g, (fid) => copiesOf(fid, g.id)) ? `${g.name}: Carrier (from a parent)` : null;
+            })
+            .filter((l): l is string => !!l);
+          return lines.length === 0 ? (
+            <Empty>No genes recorded. Record genes like blond or albino to predict what pairings will throw.</Empty>
+          ) : (
+            <Card>
+              {lines.map((l) => (
+                <Body key={l}>{l}</Body>
+              ))}
+            </Card>
+          );
+        })()}
       </Section>
 
       <Section
