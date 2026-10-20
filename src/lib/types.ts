@@ -164,6 +164,11 @@ export type Evaluation = {
   placement: string | null;
   photo_path: string | null;
   notes: string | null;
+  // The IHS standard the score was given under, e.g. 2023.
+  standard_year: number;
+  // Set once a judge signs the score; after that it can't be changed or deleted.
+  locked_at: string | null;
+  seal: string | null;
   created_at: string;
 };
 

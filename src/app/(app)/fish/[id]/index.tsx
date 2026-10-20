@@ -283,6 +283,7 @@ export default function FishScreen() {
             title={`${e.total} / ${ihsMaxTotal(e.sex)} · ${formatDate(e.evaluated_on)}`}
             subtitle={[
               isDisqualified(e.sex, e.score_reasons ?? {}) ? 'Disqualified' : null,
+              e.locked_at ? 'Signed' : null,
               labelOf(EVALUATION_KINDS, e.kind),
               e.event,
               e.placement,

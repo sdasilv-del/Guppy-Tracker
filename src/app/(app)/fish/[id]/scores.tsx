@@ -87,7 +87,16 @@ export default function ScoreHistoryScreen() {
                 {isDisqualified(e.sex, e.score_reasons ?? {}) ? ' · Disqualified' : ''}
               </Text>
               <Muted>
-                {[formatDate(e.evaluated_on), labelOf(EVALUATION_KINDS, e.kind), e.judge, e.event].filter(Boolean).join(' · ')}
+                {[
+                  formatDate(e.evaluated_on),
+                  labelOf(EVALUATION_KINDS, e.kind),
+                  e.judge,
+                  e.event,
+                  `IHS ${e.standard_year}`,
+                  e.locked_at ? `Signed, seal ${e.seal}` : null,
+                ]
+                  .filter(Boolean)
+                  .join(' · ')}
               </Muted>
               {breakdown(e).map((part, j) => {
                 const change = previous ? Math.round((part.points - previous[j].points) * 10) / 10 : 0;
