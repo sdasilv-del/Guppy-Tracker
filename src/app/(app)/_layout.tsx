@@ -50,6 +50,8 @@ export default function AppLayout() {
       <Stack.Screen name="groups/index" options={{ title: 'Breeding groups' }} />
       <Stack.Screen name="groups/new" options={{ title: 'New breeding group' }} />
       <Stack.Screen name="groups/pair" options={{ title: 'Trial pairing' }} />
+      <Stack.Screen name="plans/index" options={{ title: 'Line plans' }} />
+      <Stack.Screen name="plans/[id]" options={{ title: 'Line plan' }} />
       <Stack.Screen name="groups/[id]/index" options={{ title: 'Breeding group' }} />
       <Stack.Screen name="groups/[id]/edit" options={{ title: 'Edit group' }} />
       <Stack.Screen name="strains/[name]" options={{ title: 'Strain' }} />

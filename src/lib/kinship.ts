@@ -115,3 +115,12 @@ export function sharedAncestors(fish: Fish[], aId: string, bId: string): Fish[] 
     .sort((x, y) => a.get(x)! + b.get(x)! - (a.get(y)! + b.get(y)!))
     .map((id) => byId.get(id)!);
 }
+
+// What the number means, so breeders don't have to remember the reference points.
+export function inbreedingMeaning(value: number): string {
+  if (value === 0) return 'No shared ancestors on record.';
+  if (value < 0.0625) return 'Lower than first cousins. Usually safe for line breeding.';
+  if (value < 0.125) return 'About first cousins (6.25%).';
+  if (value < 0.25) return 'About half siblings (12.5%). Watch for weaker fry.';
+  return 'Brother and sister level (25%) or closer. Expect weaker fry unless the line is tested.';
+}

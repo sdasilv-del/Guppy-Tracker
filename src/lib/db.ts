@@ -2,6 +2,7 @@ import { decode } from 'base64-arraybuffer';
 
 import { type FishStatus, INACTIVE_STATUSES } from '@/lib/constants';
 import type { FishGene, Gene, GeneMode } from '@/lib/genetics';
+import type { LinePlan } from '@/lib/line-plan';
 import { supabase } from '@/lib/supabase';
 import type {
   BreedingGroup,
@@ -704,4 +705,27 @@ export async function setFishGene(fishId: string, geneId: string, copies: number
       .from('fish_genes')
       .upsert({ fish_id: fishId, gene_id: geneId, copies, updated_at: new Date().toISOString() }, { onConflict: 'fish_id,gene_id' }),
   );
+}
+
+// Line plans ----------------------------------------------------------------------
+
+export async function listLinePlans(): Promise<LinePlan[]> {
+  return must(await supabase.from('line_plans').select('id, name, sire_id, dam_id, steps, notes, updated_at').order('updated_at', { ascending: false }));
+}
+
+export async function getLinePlan(id: string): Promise<LinePlan | null> {
+  return must(
+    await supabase.from('line_plans').select('id, name, sire_id, dam_id, steps, notes, updated_at').eq('id', id).maybeSingle(),
+  );
+}
+
+export type LinePlanInput = Omit<LinePlan, 'id' | 'updated_at'>;
+
+export async function saveLinePlan(id: string | null, input: LinePlanInput): Promise<void> {
+  if (id) must(await supabase.from('line_plans').update(input).eq('id', id));
+  else must(await supabase.from('line_plans').insert(input));
+}
+
+export async function deleteLinePlan(id: string): Promise<void> {
+  must(await supabase.from('line_plans').delete().eq('id', id));
 }

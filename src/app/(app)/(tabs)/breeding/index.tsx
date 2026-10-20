@@ -59,6 +59,7 @@ export default function BreedingScreen() {
           <Button title="Start a group" icon={Icons.group} small onPress={() => router.push('/groups/new')} />
           <Button title="All groups" small variant="secondary" onPress={() => router.push('/groups')} />
           <Button title="Trial pairing" small variant="secondary" onPress={() => router.push('/groups/pair')} />
+          <Button title="Line planner" small variant="secondary" onPress={() => router.push('/plans')} />
         </View>
       </Section>
 
