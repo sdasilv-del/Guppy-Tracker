@@ -24,7 +24,7 @@ import {
   listSpawns,
   listTanks,
 } from '@/lib/db';
-import { buildInsights, type Insight, type InsightKind } from '@/lib/insights';
+import { buildInsights, DEFAULT_INSIGHT_SETTINGS, type Insight, type InsightKind } from '@/lib/insights';
 import { todayISO } from '@/lib/format';
 import {
   disableNotifications,
@@ -150,7 +150,21 @@ export default function HomeScreen() {
       fishIdsWithPhotos(),
     ])
       .then(([waterTests, evaluations, shows, sales, groups, members, withPhotos]) =>
-        buildInsights({ today, tanks, fish, spawns, events, waterTests, evaluations, shows, sales, groups, members, withPhotos }),
+        buildInsights({
+          today,
+          tanks,
+          fish,
+          spawns,
+          events,
+          waterTests,
+          evaluations,
+          shows,
+          sales,
+          groups,
+          members,
+          withPhotos,
+          settings: profile ?? DEFAULT_INSIGHT_SETTINGS,
+        }),
       )
       .catch(() => [] as Insight[]);
     const reminders = buildReminders({ tanks, lastWaterChange, spawns, events, fish, custom, snoozes, today });

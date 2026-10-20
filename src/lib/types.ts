@@ -7,6 +7,11 @@ export type Profile = {
   club: string | null;
   country: string | null;
   temperature_unit: 'C' | 'F';
+  // Limits for the Home insights.
+  test_every_days: number;
+  loss_min: number;
+  loss_percent: number;
+  crowded_per_gallon: number;
 };
 
 export type Tank = {

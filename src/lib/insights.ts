@@ -4,7 +4,7 @@ import { ihsMaxTotal, INACTIVE_STATUSES } from '@/lib/constants';
 import { formatInbreeding, makeKinship } from '@/lib/kinship';
 import { daysBetween } from '@/lib/reminders';
 import { groupResults, percent, spawnResult, summarizeBatch } from '@/lib/spawn';
-import type { BreedingGroup, Evaluation, Fish, Sale, ShowEntry, Spawn, SpawnEvent, Tank, WaterTest } from '@/lib/types';
+import type { BreedingGroup, Evaluation, Fish, Profile, Sale, ShowEntry, Spawn, SpawnEvent, Tank, WaterTest } from '@/lib/types';
 
 export type InsightKind = 'water' | 'losses' | 'breeding' | 'inbreeding' | 'top' | 'sales' | 'crowded' | 'records';
 
@@ -24,15 +24,20 @@ export type InsightData = {
   groups: BreedingGroup[];
   members: Record<string, string[]>;
   withPhotos: Set<string>;
+  settings: InsightSettings;
 };
 
-// A tank goes this long without a test before Home mentions it.
-export const TEST_EVERY_DAYS = 14;
-// More fish than this per gallon counts as crowded.
-export const CROWDED_PER_GALLON = 2;
-// Fry losses this week worth a warning: at least 3 fish and a tenth of the batch.
-const LOSS_MIN = 3;
-const LOSS_SHARE = 0.1;
+// Each breeder sets these on their profile.
+export type InsightSettings = Pick<Profile, 'test_every_days' | 'loss_min' | 'loss_percent' | 'crowded_per_gallon'>;
+
+// Used until a profile has its own: a test every 14 days, a warning at 3 fry and a tenth of the batch
+// lost in a week, and more than 2 fish a gallon counts as crowded.
+export const DEFAULT_INSIGHT_SETTINGS: InsightSettings = {
+  test_every_days: 14,
+  loss_min: 3,
+  loss_percent: 10,
+  crowded_per_gallon: 2,
+};
 
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
@@ -43,6 +48,7 @@ function listCodes(fish: Fish[], max = 4): string {
 
 export function buildInsights(d: InsightData): Insight[] {
   const out: Insight[] = [];
+  const { test_every_days, loss_min, loss_percent, crowded_per_gallon } = d.settings;
   const active = d.fish.filter((f) => !INACTIVE_STATUSES.includes(f.status));
   const byId = new Map(d.fish.map((f) => [f.id, f]));
   const code = (id: string | null) => (id ? byId.get(id)?.fish_code ?? '?' : 'Unknown');
@@ -61,7 +67,7 @@ export function buildInsights(d: InsightData): Insight[] {
     ].filter(Boolean);
     if (test && bad.length > 0) {
       out.push({ key: `water-${tank.id}`, kind: 'water', title: `${tankName(tank)}: ${bad.join(', ')}`, detail: 'In the last water test. Should be 0.', warn: true, href });
-    } else if (fishIn(tank.id) > 0 && (!test || daysBetween(test.tested_on, d.today) > TEST_EVERY_DAYS)) {
+    } else if (fishIn(tank.id) > 0 && (!test || daysBetween(test.tested_on, d.today) > test_every_days)) {
       out.push({
         key: `water-${tank.id}`,
         kind: 'water',
@@ -79,7 +85,7 @@ export function buildInsights(d: InsightData): Insight[] {
     const lost = d.events
       .filter((e) => e.spawn_id === s.id && e.kind === 'loss' && daysBetween(e.happened_on, d.today) <= 7)
       .reduce((sum, e) => sum + (e.count ?? 0), 0);
-    if (lost >= LOSS_MIN && lost >= s.fry_count * LOSS_SHARE) {
+    if (lost >= loss_min && lost >= (s.fry_count * loss_percent) / 100) {
       out.push({
         key: `loss-${s.id}`,
         kind: 'losses',
@@ -174,7 +180,7 @@ export function buildInsights(d: InsightData): Insight[] {
   // 8. Crowded tanks, counting fish only (not fry batches).
   for (const tank of d.tanks) {
     const n = fishIn(tank.id);
-    if (!tank.size_gallons || n / tank.size_gallons <= CROWDED_PER_GALLON) continue;
+    if (!tank.size_gallons || n / tank.size_gallons <= crowded_per_gallon) continue;
     out.push({
       key: `crowded-${tank.id}`,
       kind: 'crowded',
