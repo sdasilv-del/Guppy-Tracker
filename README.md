@@ -43,6 +43,29 @@ To use a different Supabase project instead, run those files in its SQL Editor, 
 
 3. Install **Expo Go** from the App Store or Google Play, then scan the QR code shown in the terminal.
 
+### 3. Build the app for TestFlight and Google Play
+
+Builds run on Expo's servers with [EAS Build](https://docs.expo.dev/build/introduction/). The profiles are in [`eas.json`](eas.json): `preview` makes an installable test build, and `production` makes a store build with the build number counted up automatically.
+
+One-time setup:
+
+1. Create a free account at [expo.dev](https://expo.dev), then run `npx eas-cli login` and `npx eas-cli init` in this folder. `init` adds the project ID to `app.json`; commit that change.
+2. iPhone: join the [Apple Developer Program](https://developer.apple.com/programs/) (US$99 a year). The first iOS build asks you to sign in to Apple and creates the certificates for you.
+3. Android: create a [Google Play Console](https://play.google.com/console) account (US$25 once) and create the app there. The very first Android upload has to be done by hand in the Play Console; after that `eas submit` can do it.
+4. Crash reporting (optional): create a React Native project at [sentry.io](https://sentry.io), then add these on expo.dev under the project's **Environment variables**, for the preview and production environments:
+   - `EXPO_PUBLIC_SENTRY_DSN`: the project's DSN (plain text)
+   - `SENTRY_ORG` and `SENTRY_PROJECT`: your organisation and project slugs (plain text)
+   - `SENTRY_AUTH_TOKEN`: an organisation auth token (secret), so builds upload source maps and crashes show the real code
+
+Then:
+
+```bash
+npx eas-cli build --platform ios --profile production --auto-submit   # to TestFlight
+npx eas-cli build --platform android --profile production             # for Play internal testing
+```
+
+The bundle ID is `ca.guppytracker.app` for both platforms. Change it in `app.json` before the first build if you want a different one; it can't be changed after the app is in the stores.
+
 ## Development
 
 ```bash

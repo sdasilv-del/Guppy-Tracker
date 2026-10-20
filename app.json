@@ -8,9 +8,15 @@
     "scheme": "guppytracker",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "icon": "./assets/images/icon.png"
+      "bundleIdentifier": "ca.guppytracker.app",
+      "supportsTablet": false,
+      "icon": "./assets/images/icon.png",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
+      "package": "ca.guppytracker.app",
       "adaptiveIcon": {
         "backgroundColor": "#0E1628",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -47,7 +53,13 @@
           "cameraPermission": "Guppy Tracker uses the camera to photograph your fish."
         }
       ],
-      "expo-sharing"
+      "expo-sharing",
+      [
+        "@sentry/react-native/expo",
+        {
+          "url": "https://sentry.io/"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
