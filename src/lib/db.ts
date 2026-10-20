@@ -228,7 +228,7 @@ export async function deleteFish(id: string): Promise<void> {
   const [photos, evaluations] = await Promise.all([listFishPhotos(id), listEvaluations(id)]);
   const paths = [
     ...photos.map((p) => p.storage_path),
-    ...evaluations.map((e) => e.photo_path).filter((p): p is string => !!p),
+    ...evaluations.flatMap((e) => [e.photo_path, e.certificate_path]).filter((p): p is string => !!p),
   ];
   if (paths.length > 0) {
     await supabase.storage.from('fish-photos').remove(paths);
@@ -587,7 +587,7 @@ export async function removeStoredPhotos(paths: string[]): Promise<void> {
 }
 
 export async function deleteEvaluation(evaluation: Evaluation): Promise<void> {
-  if (evaluation.photo_path) await removeStoredPhotos([evaluation.photo_path]);
+  await removeStoredPhotos([evaluation.photo_path, evaluation.certificate_path].filter((p): p is string => !!p));
   must(await supabase.from('evaluations').delete().eq('id', evaluation.id));
 }
 

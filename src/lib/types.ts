@@ -168,6 +168,8 @@ export type Evaluation = {
   male_length_mm: number | null;
   placement: string | null;
   photo_path: string | null;
+  // A photo of the judge's official score sheet or certificate, on official scores.
+  certificate_path: string | null;
   notes: string | null;
   // The IHS standard the score was given under, e.g. 2023.
   standard_year: number;

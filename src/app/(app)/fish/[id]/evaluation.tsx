@@ -141,6 +141,8 @@ export default function EvaluationScreen() {
   const [notes, setNotes] = useState('');
   const [photo, setPhoto] = useState<PickedPhoto | null>(null);
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+  const [certificate, setCertificate] = useState<PickedPhoto | null>(null);
+  const [certificateUrl, setCertificateUrl] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -159,7 +161,10 @@ export default function EvaluationScreen() {
           setScoreNotes(e.score_notes);
           setScoreReasons(e.score_reasons ?? {});
           setNotes(e.notes ?? '');
-          if (e.photo_path) setPhotoUrl((await signedPhotoUrls([e.photo_path]))[e.photo_path] ?? null);
+          const paths = [e.photo_path, e.certificate_path].filter((p): p is string => !!p);
+          const urls = await signedPhotoUrls(paths);
+          if (e.photo_path) setPhotoUrl(urls[e.photo_path] ?? null);
+          if (e.certificate_path) setCertificateUrl(urls[e.certificate_path] ?? null);
         }
         setLoading(false);
       })
@@ -170,7 +175,7 @@ export default function EvaluationScreen() {
   }, [id, evalId]);
 
   // Unsaved-changes check: compares the form with how it looked once loaded.
-  const snapshot = JSON.stringify({ kind, date, event, judge, placement, scores, scoreNotes, scoreReasons, notes, photo: photo?.uri });
+  const snapshot = JSON.stringify({ kind, date, event, judge, placement, scores, scoreNotes, scoreReasons, notes, photo: photo?.uri, certificate: certificate?.uri });
   const [baseline, setBaseline] = useState<string | null>(null);
   useEffect(() => {
     // Taken once, right after loading finishes.
@@ -251,6 +256,11 @@ export default function EvaluationScreen() {
     try {
       let photoPath = existing?.photo_path ?? null;
       if (photo && session) photoPath = await uploadPhoto(session.user.id, id, photo.base64, photo.mimeType);
+      // The certificate photo only belongs to official scores.
+      let certificatePath = kind === 'official' ? existing?.certificate_path ?? null : null;
+      if (kind === 'official' && certificate && session) {
+        certificatePath = await uploadPhoto(session.user.id, id, certificate.base64, certificate.mimeType);
+      }
       await saveEvaluation(evalId ?? null, {
         fish_id: id,
         kind,
@@ -266,11 +276,15 @@ export default function EvaluationScreen() {
         score_reasons: reasonsByKey,
         placement: kind === 'official' ? blankToNull(placement) : null,
         photo_path: photoPath,
+        certificate_path: certificatePath,
         notes: blankToNull(notes),
         standard_year: existing?.standard_year ?? IHS_STANDARD_YEAR,
       });
       // A replaced photo is no longer used by anything.
       if (existing?.photo_path && photoPath !== existing.photo_path) await removeStoredPhotos([existing.photo_path]);
+      if (existing?.certificate_path && certificatePath !== existing.certificate_path) {
+        await removeStoredPhotos([existing.certificate_path]);
+      }
       router.back();
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -301,9 +315,13 @@ export default function EvaluationScreen() {
       setError("Enter the judge's name and save before locking.");
       return;
     }
+    const noCertificate =
+      kind === 'official' && !existing?.certificate_path
+        ? "\n\nThere's no photo of the official certificate yet, and one can't be added after locking."
+        : '';
     Alert.alert(
       'Lock and sign this score?',
-      `Signed by ${judge.trim()}. Once locked, nobody can change or delete it, so buyers and clubs can trust it.`,
+      `Signed by ${judge.trim()}. Once locked, nobody can change or delete it, so buyers and clubs can trust it.${noCertificate}`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -322,7 +340,13 @@ export default function EvaluationScreen() {
     if (picked) setPhoto(picked);
   }
 
+  async function addCertificate(source: 'camera' | 'library') {
+    const picked = await pickPhoto(source);
+    if (picked) setCertificate(picked);
+  }
+
   const shownPhoto = photo?.uri ?? photoUrl;
+  const shownCertificate = certificate?.uri ?? certificateUrl;
 
   return (
     <Screen>
@@ -421,6 +445,30 @@ export default function EvaluationScreen() {
         <Field label="Placement or award" value={placement} onChangeText={setPlacement} placeholder="e.g. 1st, Best of Show" />
       ) : null}
 
+      {kind === 'official' ? (
+        <Card>
+          <Heading>Official certificate</Heading>
+          {shownCertificate ? (
+            <Image source={{ uri: shownCertificate }} style={styles.certificate} contentFit="contain" />
+          ) : (
+            <Muted>
+              Take a picture of the judge&apos;s score sheet or certificate. It proves the score is official and prints as its own
+              page in the pedigree. Add it before locking, because a locked score can&apos;t change.
+            </Muted>
+          )}
+          {locked ? null : (
+            <View style={styles.buttons}>
+              <View style={{ flex: 1 }}>
+                <Button title="Take photo" icon={Icons.camera} variant="secondary" small onPress={() => addCertificate('camera')} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Button title="Choose photo" icon={Icons.library} variant="secondary" small onPress={() => addCertificate('library')} />
+              </View>
+            </View>
+          )}
+        </Card>
+      ) : null}
+
       {shownPhoto ? (
         <Image source={{ uri: shownPhoto }} style={styles.photo} contentFit="cover" />
       ) : (
@@ -473,6 +521,7 @@ const styles = StyleSheet.create({
   voidTotal: { fontSize: 20, lineHeight: 26, textDecorationLine: 'line-through' },
   sheetTitle: { fontSize: 24, fontWeight: '800' },
   photo: { width: '100%', aspectRatio: 4 / 3, borderRadius: 12 },
+  certificate: { width: '100%', aspectRatio: 3 / 4, borderRadius: 8 },
   buttons: { flexDirection: 'row', gap: Spacing.two },
   form: { gap: Spacing.three },
   lockedForm: { opacity: 0.7 },

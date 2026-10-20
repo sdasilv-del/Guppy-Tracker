@@ -5,7 +5,8 @@ import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-nati
 import { Button, Card, ErrorText, Loading, Muted, Screen } from '@/components/ui';
 import { Icons } from '@/constants/icons';
 import { Spacing } from '@/constants/theme';
-import { labelOf, SEXES, TAIL_STANDARDS } from '@/lib/constants';
+import { ihsMaxTotal, labelOf, SEXES, TAIL_STANDARDS } from '@/lib/constants';
+import { formatDate } from '@/lib/format';
 import { useAuth } from '@/lib/auth';
 import { latestPhotoPaths, listAllShowEntries, listEvaluationSummaries, listEvaluations, listFish, signedPhotoUrls } from '@/lib/db';
 import { bestEvaluation, certificateHtml } from '@/lib/export';
@@ -139,12 +140,39 @@ export default function PedigreeScreen() {
                 if (url) photo = await imageDataUri(url);
               } catch {}
             }
+            // Each official score's certificate photo gets a page of its own, oldest first.
+            const official = evaluations
+              .filter((e) => e.kind === 'official' && e.certificate_path)
+              .sort((a, b) => a.evaluated_on.localeCompare(b.evaluated_on));
+            const certificates: { image: string; caption: string }[] = [];
+            if (official.length > 0) {
+              const urls = await signedPhotoUrls(official.map((e) => e.certificate_path!));
+              for (const e of official) {
+                const url = urls[e.certificate_path!];
+                if (!url) continue;
+                const caption = [
+                  e.event,
+                  formatDate(e.evaluated_on),
+                  `IHS ${e.total} / ${ihsMaxTotal(e.sex)}`,
+                  e.placement,
+                  e.judge ? `judged by ${e.judge}` : null,
+                  e.locked_at ? `seal ${e.seal}` : null,
+                ]
+                  .filter(Boolean)
+                  .join(' · ');
+                // A certificate that can't be fetched is left out rather than stopping the print.
+                try {
+                  certificates.push({ image: await imageDataUri(url), caption });
+                } catch {}
+              }
+            }
             await printHtml(
               certificateHtml(fish, data?.fish ?? [], profile, {
                 photo,
                 best: bestEvaluation(evaluations),
                 results: data?.results,
                 siblings,
+                certificates,
               }),
             );
           } catch (e) {
@@ -154,7 +182,7 @@ export default function PedigreeScreen() {
           }
         }}
       />
-      <Muted>A one-page certificate with the fish&apos;s photo, best IHS score, three generations and littermates with their scores, to give a buyer or save as a PDF.</Muted>
+      <Muted>A one-page certificate with the fish&apos;s photo, best IHS score, three generations and littermates with their scores, and a page for each official certificate, to give a buyer or save as a PDF.</Muted>
     </Screen>
   );
 }

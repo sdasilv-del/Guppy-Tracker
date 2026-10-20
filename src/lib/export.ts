@@ -145,7 +145,14 @@ export function certificateHtml(
   fish: Fish,
   allFish: Fish[],
   profile: Profile | null,
-  extras: { photo?: string | null; best?: Evaluation | null; results?: Map<string, string>; siblings?: Fish[] } = {},
+  extras: {
+    photo?: string | null;
+    best?: Evaluation | null;
+    results?: Map<string, string>;
+    siblings?: Fish[];
+    // Photos of judges' official certificates, each printed on a page of its own.
+    certificates?: { image: string; caption: string }[];
+  } = {},
 ): string {
   const byId = Object.fromEntries(allFish.map((f) => [f.id, f]));
   const columns = pedigreeColumns(fish, byId, CERT_DEPTH);
@@ -228,6 +235,15 @@ export function certificateHtml(
     </table>` : ''}
     <div class="sign">Breeder's signature</div>
     <div class="foot">Printed ${formatDate(todayISO())} from Guppy Tracker.</div>
+    ${(extras.certificates ?? [])
+      .map(
+        (c) => `<div style="page-break-before: always; break-before: page;">
+      <h1>Official certificate</h1>
+      <div class="sub">${escapeHtml(fish.fish_code)} · ${escapeHtml(c.caption)}</div>
+      <img src="${escapeHtml(c.image)}" style="display: block; max-width: 100%; max-height: 880px; margin: 0 auto;" />
+    </div>`,
+      )
+      .join('')}
   </body></html>`;
 }
 
