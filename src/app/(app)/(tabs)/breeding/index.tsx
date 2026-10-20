@@ -58,6 +58,7 @@ export default function BreedingScreen() {
         <View style={styles.actions}>
           <Button title="Start a group" icon={Icons.group} small onPress={() => router.push('/groups/new')} />
           <Button title="All groups" small variant="secondary" onPress={() => router.push('/groups')} />
+          <Button title="Trial pairing" small variant="secondary" onPress={() => router.push('/groups/pair')} />
         </View>
       </Section>
 
@@ -99,5 +100,5 @@ export default function BreedingScreen() {
 }
 
 const styles = StyleSheet.create({
-  actions: { flexDirection: 'row', gap: Spacing.two },
+  actions: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
 });

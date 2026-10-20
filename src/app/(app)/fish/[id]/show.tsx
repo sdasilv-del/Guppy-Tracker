@@ -85,7 +85,7 @@ export default function ShowEntryScreen() {
     <Screen>
       <Field label="Show" value={show} onChangeText={setShow} placeholder="e.g. IKGH Spring Show" />
       <DateField label="Date" value={date} onChange={setDate} />
-      <Field label="Class" value={showClass} onChangeText={setShowClass} placeholder="e.g. A2 Delta, male" />
+      <Field label="Class" value={showClass} onChangeText={setShowClass} placeholder="e.g. A2 Triangle, male" />
       <Field label="Placing" value={placing} onChangeText={setPlacing} placeholder="e.g. 1st, Best in Show" />
       <NumberField label="Points" value={points} onChangeText={setPoints} placeholder="Optional" />
       <Field label="Notes" value={notes} onChangeText={setNotes} multiline />

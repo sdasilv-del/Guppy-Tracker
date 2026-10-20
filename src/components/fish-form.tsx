@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { FishPicker, fishLabel } from '@/components/fish-picker';
+import { TailPicker } from '@/components/tail-picker';
 import {
   Button,
   Card,
@@ -26,7 +27,6 @@ import {
   type Origin,
   SEXES,
   type Sex,
-  TAIL_STANDARDS,
   type TailStandard,
 } from '@/lib/constants';
 import type { FishInput } from '@/lib/db';
@@ -159,7 +159,7 @@ export function FishForm({
 
   async function submit(action = onSubmit) {
     if (!tail) {
-      setError('Pick the tail standard.');
+      setError('Pick the tail standard, or "Not sure yet".');
       return;
     }
     setBusy(true);
@@ -222,12 +222,19 @@ export function FishForm({
         />
       ) : null}
       <ChipSelect label="Sex" options={SEXES} value={sex} onChange={(v) => v && setSex(v)} />
-      <ChipSelect label="Tail standard (IKGH)" options={TAIL_STANDARDS} value={tail} onChange={setTail} />
+      <TailPicker label="Tail standard (IKGH)" value={tail} onChange={setTail} />
+      {tail === 'U' ? (
+        <Muted>You can pick the tail later. The fish gets a new ID then, and this one stays searchable.</Muted>
+      ) : null}
       {sexChanges ? (
         <Muted>
           Changing sex or tail standard gives this fish a new ID. Its current ID {initial.fish_code} stays searchable.
         </Muted>
       ) : null}
+      <Muted>
+        Base colour is the body underneath. Cover colour is the colour and pattern on top. Not sure? Leave both blank
+        and add them later.
+      </Muted>
       <ChipSelect
         label="Base colour (IKGH)"
         options={BASE_COLOURS}

@@ -193,7 +193,7 @@ const SHORT_LENGTH = 'Short tails (form item 30c): 24 mm 8 pts, 22 mm 6, 20 mm 3
 const FIRST_THIRD = 'Target: to the end of the first third of the caudal fin.';
 const SWORD_COLOUR = 'The basic form between or under the swords may be colourless.';
 
-export const STANDARD_GUIDE: Record<TailStandard, StandardGuide> = {
+export const STANDARD_GUIDE: Record<Exclude<TailStandard, 'U'>, StandardGuide> = {
   A1: { bodyLength: BROAD_LENGTH, dorsal: `${FIRST_THIRD} Rises steeply, pointed end.`, caudalLength: 'Target: 10/10 of body length.', caudalShape: 'Elongated triangle at 45° to the body; straight edges, corners slightly rounded.' },
   A2: { bodyLength: BROAD_LENGTH, dorsal: `${FIRST_THIRD} Rises steeply, broad, blunt end.`, caudalLength: 'Target: 8/10 of body length.', caudalShape: 'Triangle at 70° to the body; straight edges, corners slightly rounded.' },
   A3: { bodyLength: BROAD_LENGTH, dorsal: `${FIRST_THIRD} Rounded-off end.`, caudalLength: 'Target: 8/10 of body length; not less than 5/10.', caudalShape: 'Curved upper and lower edges, widest at 3/4 of its length; concave rear edge; width 3/4 of length.' },
@@ -214,7 +214,7 @@ const RECESSIVE_BASES = [2, 4, 5, 6, 7, 8, 9, 10];
 
 // Guidance shown under a category, for the fish's tail standard and base colour.
 export function categoryGuide(categoryKey: string, standard: TailStandard | null, baseColour: number | null): string[] {
-  const guide = standard ? STANDARD_GUIDE[standard] : null;
+  const guide = standard && standard !== 'U' ? STANDARD_GUIDE[standard] : null;
   const lines: string[] = [];
   const allocation = MALE_REASONS[categoryKey]?.allocation;
   if (allocation) lines.push(allocation);

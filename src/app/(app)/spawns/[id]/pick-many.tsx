@@ -17,7 +17,7 @@ import {
 import { Icons } from '@/constants/icons';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { FISH_STATUSES, type FishStatus, type Sex, TAIL_STANDARDS, type TailStandard } from '@/lib/constants';
+import { FISH_STATUSES, type FishStatus, type Sex, TAIL_OPTIONS, type TailStandard } from '@/lib/constants';
 import { createFish, getSpawn, listFish, listSpawnEvents, listTanks } from '@/lib/db';
 import { summarizeBatch } from '@/lib/spawn';
 import { useFocusData } from '@/lib/use-data';
@@ -154,7 +154,7 @@ export default function PickManyScreen() {
         <Stepper label="Unknown sex" value={unknown} onChange={setUnknown} max={room(unknown)} />
       </Card>
 
-      <ChipSelect label="Tail standard" options={TAIL_STANDARDS} value={chosenTail} onChange={setTail} />
+      <ChipSelect label="Tail standard" options={TAIL_OPTIONS} value={chosenTail} onChange={setTail} />
       <ChipSelect label="Status" options={PICK_STATUSES} value={status} onChange={(v) => v && setStatus(v)} />
       <ChipSelect
         label="Tank"

@@ -6,6 +6,7 @@ export type Profile = {
   breeder_initials: string;
   club: string | null;
   country: string | null;
+  temperature_unit: 'C' | 'F';
 };
 
 export type Tank = {
@@ -15,6 +16,7 @@ export type Tank = {
   size_gallons: number | null;
   purpose: TankPurpose;
   notes: string | null;
+  water_change_every_days: number | null;
   created_at: string;
 };
 
@@ -186,4 +188,34 @@ export type Sale = {
   currency: string;
   notes: string | null;
   created_at: string;
+};
+
+export type CareKind = 'feeding' | 'treatment';
+
+export type CareLog = {
+  id: string;
+  tank_id: string;
+  kind: CareKind;
+  logged_on: string;
+  item: string;
+  amount: string | null;
+  course_days: number | null;
+  notes: string | null;
+  created_at: string;
+};
+
+export type CustomReminder = {
+  id: string;
+  title: string;
+  due_on: string;
+  repeat_every_days: number | null;
+  fish_id: string | null;
+  tank_id: string | null;
+  notes: string | null;
+  created_at: string;
+};
+
+export type ReminderSnooze = {
+  reminder_key: string;
+  snoozed_until: string;
 };
