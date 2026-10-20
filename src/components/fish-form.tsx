@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { FishPicker, fishLabel } from '@/components/fish-picker';
-import { TailGuide } from '@/components/tail-guide';
+import { TailPicker } from '@/components/tail-picker';
 import {
   Button,
   Card,
@@ -27,7 +27,6 @@ import {
   type Origin,
   SEXES,
   type Sex,
-  TAIL_OPTIONS,
   type TailStandard,
 } from '@/lib/constants';
 import type { FishInput } from '@/lib/db';
@@ -139,7 +138,6 @@ export function FishForm({
   const [notes, setNotes] = useState(seed.notes ?? '');
   const [pickReason, setPickReason] = useState(seed.pick_reason ?? '');
   const [photo, setPhoto] = useState<PickedPhoto | null>(null);
-  const [showTailGuide, setShowTailGuide] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -224,22 +222,7 @@ export function FishForm({
         />
       ) : null}
       <ChipSelect label="Sex" options={SEXES} value={sex} onChange={(v) => v && setSex(v)} />
-      <ChipSelect label="Tail standard (IKGH)" options={TAIL_OPTIONS} value={tail} onChange={setTail} />
-      <Button
-        title={showTailGuide ? 'Hide tail pictures' : 'Not sure? See what each tail looks like'}
-        variant="secondary"
-        small
-        onPress={() => setShowTailGuide(!showTailGuide)}
-      />
-      {showTailGuide ? (
-        <TailGuide
-          value={tail}
-          onPick={(t) => {
-            setTail(t);
-            setShowTailGuide(false);
-          }}
-        />
-      ) : null}
+      <TailPicker label="Tail standard (IKGH)" value={tail} onChange={setTail} />
       {tail === 'U' ? (
         <Muted>You can pick the tail later. The fish gets a new ID then, and this one stays searchable.</Muted>
       ) : null}

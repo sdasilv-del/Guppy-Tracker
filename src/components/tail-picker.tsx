@@ -4,7 +4,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Muted } from '@/components/ui';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { TAIL_STANDARDS, type TailStandard } from '@/lib/constants';
+import { TAIL_OPTIONS, type TailStandard } from '@/lib/constants';
 
 // The drawing of each tail standard from the International High-Breeding Standard (IHS) 2023,
 // so a beginner can match their fish by eye.
@@ -24,35 +24,52 @@ const TAILS: Record<Exclude<TailStandard, 'U'>, { image: number; tip: string }> 
   C4: { image: require('@/assets/images/tails/c4.jpg'), tip: 'Round tail with a thin pin sticking out the middle.' },
 };
 
-// A grid of tail drawings. Tapping one picks it.
-export function TailGuide({ value, onPick }: { value: TailStandard | null; onPick: (tail: TailStandard) => void }) {
+// The tail standard field: a grid of tail drawings, plus "Not sure yet". Tapping one picks it.
+export function TailPicker({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: TailStandard | null;
+  onChange: (tail: TailStandard) => void;
+}) {
   const theme = useTheme();
   return (
     <View style={styles.wrap}>
+      <Text style={[styles.label, { color: theme.textSecondary }]}>{label}</Text>
       <View style={styles.grid}>
-        {TAIL_STANDARDS.map((t) => {
+        {TAIL_OPTIONS.map((t) => {
           const selected = t.value === value;
+          const tail = t.value === 'U' ? null : TAILS[t.value];
           return (
             <Pressable
               key={t.value}
               accessibilityRole="button"
-              accessibilityLabel={`${t.label}. ${TAILS[t.value].tip}`}
+              accessibilityLabel={tail ? `${t.label}. ${tail.tip}` : t.label}
               accessibilityState={{ selected }}
-              onPress={() => onPick(t.value)}
+              onPress={() => onChange(t.value)}
               style={({ pressed }) => [
                 styles.cell,
                 {
                   backgroundColor: theme.backgroundElement,
                   borderColor: selected ? theme.accent : theme.border,
+                  borderWidth: selected ? 2 : 1,
                   opacity: pressed ? 0.75 : 1,
                 },
               ]}>
               {/* The drawings are black lines on white, so they keep a white card in dark mode too. */}
               <View style={styles.picture}>
-                <Image source={TAILS[t.value].image} style={styles.image} contentFit="contain" accessible={false} />
+                {tail ? (
+                  <Image source={tail.image} style={styles.image} contentFit="contain" accessible={false} />
+                ) : (
+                  <Text style={styles.unknown}>?</Text>
+                )}
               </View>
               <Text style={[styles.name, { color: theme.text }]}>{t.label}</Text>
-              <Text style={[styles.tip, { color: theme.textSecondary }]}>{TAILS[t.value].tip}</Text>
+              <Text style={[styles.tip, { color: theme.textSecondary }]}>
+                {tail ? tail.tip : 'Pick this for now and choose the tail later.'}
+              </Text>
             </Pressable>
           );
         })}
@@ -64,9 +81,19 @@ export function TailGuide({ value, onPick }: { value: TailStandard | null; onPic
 
 const styles = StyleSheet.create({
   wrap: { gap: Spacing.two },
+  label: { fontSize: 13, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.4 },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
   cell: { width: '48%', borderWidth: 1, borderRadius: 10, padding: Spacing.two, gap: 2, alignItems: 'center' },
-  picture: { width: '100%', height: 72, backgroundColor: '#ffffff', borderRadius: 6, padding: 4 },
+  picture: {
+    width: '100%',
+    height: 72,
+    backgroundColor: '#ffffff',
+    borderRadius: 6,
+    padding: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  unknown: { fontSize: 40, fontWeight: '700', color: '#888888' },
   image: { width: '100%', height: '100%' },
   name: { fontSize: 13, fontWeight: '600', textAlign: 'center' },
   tip: { fontSize: 11, textAlign: 'center' },
