@@ -1,7 +1,9 @@
 import { router } from 'expo-router';
+import { StyleSheet, View } from 'react-native';
 
 import { Button, Empty, ErrorText, Heading, ListRow, ListScreen, Loading, Muted } from '@/components/ui';
 import { Icons } from '@/constants/icons';
+import { Spacing } from '@/constants/theme';
 import { groupMembers, listFish, listGroups } from '@/lib/db';
 import { formatDate } from '@/lib/format';
 import type { BreedingGroup, Fish } from '@/lib/types';
@@ -61,17 +63,17 @@ export default function GroupsScreen() {
       onRefresh={reload}
       renderItem={({ item }) =>
         item === 'active' ? (
-          <>
+          <View style={styles.heading}>
             <Heading>{`Active (${active.length})`}</Heading>
             {active.length === 0 ? (
               <Empty>No active groups. Put a pair, trio or larger group together to start breeding.</Empty>
             ) : null}
-          </>
+          </View>
         ) : item === 'ended' ? (
-          <>
+          <View style={styles.heading}>
             <Heading>{`Ended (${ended.length})`}</Heading>
             <Muted>Groups that have ended. Their spawns are kept.</Muted>
-          </>
+          </View>
         ) : (
           row(item)
         )
@@ -79,3 +81,8 @@ export default function GroupsScreen() {
     />
   );
 }
+
+// A heading between groups of hairline rows, with room above it.
+const styles = StyleSheet.create({
+  heading: { gap: Spacing.two, paddingTop: Spacing.three, paddingBottom: Spacing.two },
+});

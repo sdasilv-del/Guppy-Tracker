@@ -1,10 +1,12 @@
 import { type Href, router, Stack } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { type ReactNode, useState } from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { Body, Button, Card, Empty, Heading, Icon, ListRow, LoadError, Muted, Screen, Section } from '@/components/ui';
+import { LineSpawn, LineTank } from '@/components/line-icons';
+import { Button, Caps, Card, Empty, Heading, Icon, ListRow, LoadError, Muted, Screen, Section } from '@/components/ui';
 import { type IconName, Icons } from '@/constants/icons';
-import { Spacing } from '@/constants/theme';
+import { Display, Spacing } from '@/constants/theme';
 import { INACTIVE_STATUSES } from '@/lib/constants';
 import { useAuth } from '@/lib/auth';
 import {
@@ -14,7 +16,7 @@ import {
   listAllShowEntries,
   listAllWaterTests,
   listCustomReminders,
-  listEvaluationSummaries,
+  listEvaluationSummariesSince,
   listFish,
   listGroups,
   listSales,
@@ -31,55 +33,91 @@ import { summarizeBatch } from '@/lib/spawn';
 import { useFocusData } from '@/lib/use-data';
 import { useTheme } from '@/hooks/use-theme';
 
-function Stat({ value, label, href, icon }: { value: number | undefined; label: string; href: Href; icon: IconName }) {
+// One count in the row under the greeting: a serif numeral over a small capitals label, like the fish page score.
+function Stat({ value, label, href, first }: { value: number | undefined; label: string; href: Href; first?: boolean }) {
+  const theme = useTheme();
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={`${value ?? 'Loading'} ${label}`}
       onPress={() => router.navigate(href)}
-      style={({ pressed }) => [styles.statWrap, { opacity: pressed ? 0.75 : 1 }]}>
-      <Card style={styles.stat}>
-        <Icon name={icon} size={22} />
-        <Body style={styles.statNumber}>{value ?? '–'}</Body>
-        <Muted>{label}</Muted>
-      </Card>
+      style={({ pressed }) => [
+        styles.stat,
+        !first && { borderLeftWidth: StyleSheet.hairlineWidth, borderLeftColor: theme.divider },
+        { backgroundColor: pressed ? theme.backgroundElement : 'transparent' },
+      ]}>
+      <Text style={[styles.statNumber, { color: theme.text }]} numberOfLines={1} adjustsFontSizeToFit>
+        {value ?? '–'}
+      </Text>
+      <Caps style={styles.statLabel}>{label}</Caps>
     </Pressable>
   );
 }
 
-const INSIGHT_ICONS: Record<InsightKind, IconName> = {
+const INSIGHT_ICONS: Record<InsightKind, IconName | ReactNode> = {
   water: Icons.waterTest,
   losses: Icons.warning,
-  breeding: Icons.spawn,
+  breeding: <LineSpawn />,
   inbreeding: Icons.pedigree,
   top: Icons.show,
   sales: Icons.sale,
-  crowded: Icons.tank,
+  crowded: <LineTank />,
   records: Icons.edit,
 };
 
-function InsightList({ title, insights }: { title: string; insights: Insight[] }) {
+function InsightRow({ insight: i }: { insight: Insight }) {
   const theme = useTheme();
+  return (
+    <ListRow
+      icon={INSIGHT_ICONS[i.kind]}
+      title={i.title}
+      subtitle={i.detail}
+      right={i.warn ? <Icon name={Icons.warning} size={18} color={theme.danger} /> : undefined}
+      onPress={i.href ? () => router.push(i.href!) : undefined}
+    />
+  );
+}
+
+function InsightList({ title, insights }: { title: string; insights: Insight[] }) {
   if (insights.length === 0) return null;
   return (
-    <Section title={title}>
+    <Section title={title} caps>
       {insights.map((i) => (
-        <ListRow
-          key={i.key}
-          icon={INSIGHT_ICONS[i.kind]}
-          title={i.title}
-          subtitle={i.detail}
-          right={i.warn ? <Icon name={Icons.warning} size={18} color={theme.danger} /> : undefined}
-          onPress={i.href ? () => router.push(i.href!) : undefined}
-        />
+        <InsightRow key={i.key} insight={i} />
       ))}
     </Section>
   );
 }
 
-const REMINDER_ICONS: Record<ReminderKind, IconName> = {
+// Insights fold into one card with the top few; "See all" opens the rest in place.
+const INSIGHTS_SHOWN = 3;
+
+function InsightCard({ insights }: { insights: Insight[] }) {
+  const [open, setOpen] = useState(false);
+  if (insights.length === 0) return null;
+  const more = insights.length - INSIGHTS_SHOWN;
+  return (
+    <Section title="Insights" caps>
+      <Card style={styles.insights}>
+        {(open ? insights : insights.slice(0, INSIGHTS_SHOWN)).map((i) => (
+          <InsightRow key={i.key} insight={i} />
+        ))}
+        {more > 0 ? (
+          <Button
+            title={open ? 'Show fewer' : `See all ${insights.length}`}
+            variant="secondary"
+            small
+            onPress={() => setOpen(!open)}
+          />
+        ) : null}
+      </Card>
+    </Section>
+  );
+}
+
+const REMINDER_ICONS: Record<ReminderKind, IconName | ReactNode> = {
   water_change: Icons.waterChange,
-  sex_fry: Icons.fish,
+  sex_fry: <LineSpawn />,
   separate_males: Icons.move,
   custom: Icons.reminder,
 };
@@ -136,7 +174,8 @@ export default function HomeScreen() {
     // Insights are extra: if any of these fail, Home still shows counts and reminders.
     const insights = await Promise.all([
       listAllWaterTests(),
-      listEvaluationSummaries(),
+      // Only this year's scores: the insight names the top fish of the season.
+      listEvaluationSummariesSince(`${today.slice(0, 4)}-01-01`),
       listAllShowEntries(),
       listSales(),
       listGroups(),
@@ -200,22 +239,22 @@ export default function HomeScreen() {
       />
       <View style={styles.header}>
         <Heading>Hello{profile?.display_name ? `, ${profile.display_name}` : ''}</Heading>
-        <Muted>Breeder initials {profile?.breeder_initials}</Muted>
+        <Caps>Breeder initials {profile?.breeder_initials}</Caps>
       </View>
 
       {error ? <LoadError message={`Couldn't load your counts. ${error}`} onRetry={reload} /> : null}
 
-      <View style={styles.stats}>
-        <Stat value={data?.tanks} label="Tanks" href="/tanks" icon={Icons.tank} />
-        <Stat value={data?.fish} label="Fish" href="/fish" icon={Icons.fish} />
-        <Stat value={data?.fry} label="Fry" href="/breeding" icon={Icons.spawn} />
-        <Stat value={data?.forSale} label="For sale" href="/fish" icon={{ ios: 'tag', android: 'sell' }} />
+      <View style={[styles.stats, { borderColor: theme.divider }]}>
+        <Stat value={data?.tanks} label="Tanks" href="/tanks" first />
+        <Stat value={data?.fish} label="Fish" href="/fish" />
+        <Stat value={data?.fry} label="Fry" href="/breeding" />
+        <Stat value={data?.forSale} label="For sale" href="/fish" />
       </View>
 
       <InsightList title="Needs attention" insights={data?.insights.filter((i) => i.warn) ?? []} />
 
       {data ? (
-        <Section title="Today">
+        <Section title="Today" caps>
           {due.length === 0 ? <Empty>Nothing due today.</Empty> : null}
           {due.map((r) => (
             <ReminderRow key={r.key} reminder={r} today={today} />
@@ -234,37 +273,40 @@ export default function HomeScreen() {
       ) : null}
 
       {comingUp.length > 0 ? (
-        <Section title="Coming up">
+        <Section title="Coming up" caps>
           {comingUp.map((r) => (
             <ReminderRow key={r.key} reminder={r} today={today} />
           ))}
         </Section>
       ) : null}
 
-      <InsightList title="Insights" insights={data?.insights.filter((i) => !i.warn) ?? []} />
+      <InsightCard insights={data?.insights.filter((i) => !i.warn) ?? []} />
 
-      <ListRow
-        icon={Icons.show}
-        title="Season points"
-        subtitle="Show standings for each class"
-        onPress={() => router.push('/points')}
-      />
-      <ListRow
-        icon={Icons.export}
-        title="Export and print"
-        subtitle="Spreadsheets and show entry lists"
-        onPress={() => router.push('/export')}
-      />
+      <Section title="More" caps>
+        <ListRow
+          icon={Icons.show}
+          title="Season points"
+          subtitle="Show standings for each class"
+          onPress={() => router.push('/points')}
+        />
+        <ListRow
+          icon={Icons.export}
+          title="Export and print"
+          subtitle="Spreadsheets and show entry lists"
+          onPress={() => router.push('/export')}
+        />
+      </Section>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
   header: { gap: Spacing.one },
-  stats: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
-  // Two counts per row, so labels like "For sale" never squeeze or wrap.
-  statWrap: { flexBasis: '47%', flexGrow: 1 },
-  stat: { alignItems: 'center', gap: 0 },
-  statNumber: { fontSize: 28, lineHeight: 34, fontWeight: '700' },
+  // Four counts between hairlines, split by thin rules.
+  stats: { flexDirection: 'row', borderTopWidth: StyleSheet.hairlineWidth, borderBottomWidth: StyleSheet.hairlineWidth },
+  stat: { flex: 1, minHeight: 72, alignItems: 'center', justifyContent: 'center', paddingVertical: Spacing.two, gap: 2 },
+  statNumber: { fontFamily: Display.medium, fontSize: 34, lineHeight: 38, fontVariant: ['lining-nums', 'tabular-nums'] },
+  statLabel: { fontSize: 10, letterSpacing: 1.2, textAlign: 'center' },
+  insights: { paddingVertical: Spacing.one, gap: 0 },
   snooze: { paddingHorizontal: Spacing.one },
 });

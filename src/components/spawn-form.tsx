@@ -14,6 +14,14 @@ function groupLabel(g: BreedingGroup): string {
   return g.name ? `${g.group_code} ${g.name}` : g.group_code;
 }
 
+// The fry count is the one thing every spawn needs.
+function fryCountProblem(text: string): string | null {
+  const count = parseNumber(text);
+  return count === null || count < 0 || !Number.isInteger(count)
+    ? 'Enter the number of fry as a whole number.'
+    : null;
+}
+
 export function SpawnForm({
   initial,
   initialGroupId,
@@ -43,12 +51,16 @@ export function SpawnForm({
     const females = members.filter((f) => f.sex === 'F');
     const sire = males.length === 1 ? males[0] : null;
     const dam = females.length === 1 ? females[0] : null;
+    // With several males or females the parents stay open, but strain and generation can still
+    // come from the group: the strain when every member shares one, the generation after the newest.
+    const strains = new Set(members.map((f) => f.strain).filter(Boolean));
+    const sharedStrain = strains.size === 1 ? [...strains][0] : null;
     return {
       sireId: sire?.id ?? null,
       damId: dam?.id ?? null,
       tankId: group?.tank_id ?? null,
-      strain: sire?.strain ?? dam?.strain ?? '',
-      generation: nextGeneration(sire, dam) ?? '',
+      strain: sire?.strain ?? dam?.strain ?? sharedStrain ?? '',
+      generation: nextGeneration(sire, dam) ?? nextGeneration(...members) ?? '',
     };
   }
 
@@ -73,6 +85,9 @@ export function SpawnForm({
   const [notes, setNotes] = useState(initial?.notes ?? '');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [fryError, setFryError] = useState<string | null>(null);
+  // Generation and notes sit under More details. Opened when editing a spawn that has notes.
+  const [showMore, setShowMore] = useState(!!initial?.notes);
 
   function chooseGroup(id: string | null) {
     setGroupId(id);
@@ -107,11 +122,13 @@ export function SpawnForm({
   const groupOptions = groups.filter((g) => !g.ended_on || g.id === groupId);
 
   async function submit() {
-    const count = parseNumber(fryCount);
-    if (count === null || count < 0 || !Number.isInteger(count)) {
-      setError('Enter the number of fry as a whole number.');
+    const problem = fryCountProblem(fryCount);
+    setFryError(problem);
+    if (problem) {
+      setError(problem);
       return;
     }
+    const count = parseNumber(fryCount)!;
     setBusy(true);
     setError(null);
     try {
@@ -156,7 +173,17 @@ export function SpawnForm({
         onChange={(id) => chooseParents(sireId, id === UNKNOWN ? null : id)}
       />
       <DateField label="Date of birth" value={bornOn} onChange={setBornOn} />
-      <NumberField label="Fry count at birth" value={fryCount} onChangeText={setFryCount} keyboardType="number-pad" />
+      <NumberField
+        label="Fry count at birth"
+        value={fryCount}
+        onChangeText={(text) => {
+          setFryCount(text);
+          if (fryError) setFryError(fryCountProblem(text));
+        }}
+        onBlur={() => setFryError(fryCountProblem(fryCount))}
+        error={fryError}
+        keyboardType="number-pad"
+      />
       <ChipSelect
         label="Tank"
         options={tanks.map((t) => ({ value: t.id, label: tankLabel(t) }))}
@@ -165,8 +192,20 @@ export function SpawnForm({
         allowClear
       />
       <Field label="Strain" value={strain} onChangeText={setStrain} />
-      <Field label="Generation" value={generation} onChangeText={setGeneration} placeholder="e.g. F3" />
-      <Field label="Notes" value={notes} onChangeText={setNotes} multiline />
+      {showMore ? (
+        <>
+          <Field label="Generation" value={generation} onChangeText={setGeneration} placeholder="e.g. F3" />
+          <Field label="Notes" value={notes} onChangeText={setNotes} multiline />
+        </>
+      ) : generation ? (
+        <Muted>{`Generation ${generation}`}</Muted>
+      ) : null}
+      <Button
+        title={showMore ? 'Fewer details' : 'More details'}
+        variant="secondary"
+        small
+        onPress={() => setShowMore(!showMore)}
+      />
       <ErrorText message={error} />
       <Button title={submitLabel} onPress={submit} busy={busy} />
     </>

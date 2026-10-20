@@ -1,44 +1,28 @@
-import { Image } from 'expo-image';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect, useState } from 'react';
-import { Alert, InputAccessoryView, Platform, StyleSheet, Text, TextInput, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Alert, StyleSheet, type TextInput, View } from 'react-native';
 
+import { ClassCard, DisqualifiedNotice, FemaleSheetTitle, LockedNotice } from '@/components/evaluation/header';
+import { MaleScoring } from '@/components/evaluation/male-scoring';
+import { CertificateCard, ScorePhoto } from '@/components/evaluation/photos';
+import { PinnedTotal, PinnedTotalSpace, ScoreKeyboardBar, TotalCard } from '@/components/evaluation/totals';
 import { pickPhoto, type PickedPhoto } from '@/components/fish-form';
 import { FemaleScoreSheet, type FemaleSheetState, femaleTotals } from '@/components/female-score-sheet';
-import { ReasonSelect } from '@/components/reason-select';
-import {
-  Body,
-  Button,
-  Card,
-  ChipSelect,
-  DateField,
-  ErrorText,
-  Field,
-  Heading,
-  InfoRow,
-  Loading,
-  Muted,
-  Screen,
-} from '@/components/ui';
+import { Button, ChipSelect, DangerZone, DateField, ErrorText, Field, Loading, Muted, Screen } from '@/components/ui';
 import { Icons } from '@/constants/icons';
 import { Spacing } from '@/constants/theme';
 import {
-  BASE_COLOURS,
-  COVER_COLOURS,
   EVALUATION_KINDS,
   type EvaluationKind,
   type IhsCategory,
   ihsCategories,
   IHS_STANDARD_YEAR,
   ihsMaxTotal,
-  labelOf,
-  TAIL_STANDARDS,
 } from '@/lib/constants';
 import { useAuth } from '@/lib/auth';
 import { femaleReasonOptions } from '@/lib/ihs-female';
-import { categoryGuide, type CategoryReasons, disqualifications, MALE_REASONS, reasonById } from '@/lib/ihs-reasons';
+import { categoryGuide, disqualifications, MALE_REASONS, reasonById } from '@/lib/ihs-reasons';
 import {
   deleteEvaluation,
   getEvaluation,
@@ -49,104 +33,20 @@ import {
   signedPhotoUrls,
   uploadPhoto,
 } from '@/lib/db';
-import { blankToNull, formatDate, numberText, parseNumber, todayISO } from '@/lib/format';
+import { blankToNull, numberText, parseNumber, todayISO } from '@/lib/format';
+import * as haptics from '@/lib/haptics';
 import type { Evaluation, Fish } from '@/lib/types';
-import { useTheme } from '@/hooks/use-theme';
 import { useUnsavedChanges } from '@/hooks/use-unsaved-changes';
 import { attempt } from '@/lib/alerts';
 
-// The number pad has no return key on iPhone, so a bar above it carries Next.
-const SCORE_KEYBOARD = 'score-keyboard';
 // The show, judge and kind of the last score saved, offered again for the next fish scored.
 const LAST_SCORE_KEY = 'gt-last-evaluation';
 
-function ScoreRow({
-  category,
-  value,
-  note,
-  onValue,
-  onNote,
-  reasonOptions,
-  reasons,
-  onReasons,
-  guide,
-  inputRef,
-  onNext,
-  onFocus,
-}: {
-  inputRef?: (input: TextInput | null) => void;
-  onNext?: () => void;
-  onFocus?: () => void;
-  category: IhsCategory;
-  value: string;
-  note: string;
-  onValue: (text: string) => void;
-  onNote: (text: string) => void;
-  reasonOptions?: CategoryReasons;
-  reasons: string[];
-  onReasons: (next: string[]) => void;
-  guide: string[];
-}) {
-  const theme = useTheme();
-  const n = parseNumber(value);
-  const bad = value.trim() !== '' && (n === null || n < 0 || n > category.max);
-  const inputStyle = [styles.input, { color: theme.text, borderColor: bad ? theme.danger : theme.border }];
-  return (
-    <View style={styles.scoreRow}>
-      <View style={styles.scoreLine}>
-        <Text style={[styles.scoreLabel, { color: theme.text }]}>{category.label}</Text>
-        <TextInput
-          value={value}
-          onChangeText={onValue}
-          keyboardType="decimal-pad"
-          ref={inputRef}
-          onFocus={onFocus}
-          returnKeyType="next"
-          submitBehavior="submit"
-          onSubmitEditing={onNext}
-          inputAccessoryViewID={Platform.OS === 'ios' ? SCORE_KEYBOARD : undefined}
-          placeholder="–"
-          placeholderTextColor={theme.textSecondary}
-          style={[inputStyle, styles.scoreInput]}
-          accessibilityLabel={`${category.part} ${category.label}, out of ${category.max}`}
-        />
-        <Text style={[styles.max, { color: theme.textSecondary }]}>/ {category.max}</Text>
-      </View>
-      {bad ? (
-        <Text accessibilityLiveRegion="polite" style={[styles.guide, { color: theme.danger }]}>
-          Enter a number from 0 to {category.max}.
-        </Text>
-      ) : null}
-      {guide.map((line) => (
-        <Text key={line} style={[styles.guide, { color: theme.textSecondary }]}>
-          {line}
-        </Text>
-      ))}
-      {reasonOptions ? (
-        <ReasonSelect
-          title={`${category.part}: ${category.label}`}
-          options={reasonOptions}
-          selected={reasons}
-          onChange={onReasons}
-        />
-      ) : null}
-      <TextInput
-        value={note}
-        onChangeText={onNote}
-        placeholder={reasonOptions ? 'Other / additional comment (optional)' : 'Note, e.g. why points were lost'}
-        placeholderTextColor={theme.textSecondary}
-        style={[inputStyle, styles.noteInput]}
-        accessibilityLabel={`${category.part} ${category.label} note`}
-      />
-    </View>
-  );
-}
-
+// Loads the fish and its score, owns the form, and saves, locks or deletes it.
+// The parts of the sheet live in src/components/evaluation/.
 export default function EvaluationScreen() {
   const { id, evalId } = useLocalSearchParams<{ id: string; evalId?: string }>();
   const { session } = useAuth();
-  const theme = useTheme();
-  const insets = useSafeAreaInsets();
   const [loading, setLoading] = useState(true);
   const [fish, setFish] = useState<Fish | null>(null);
   const [existing, setExisting] = useState<Evaluation | null>(null);
@@ -325,6 +225,7 @@ export default function EvaluationScreen() {
         LAST_SCORE_KEY,
         JSON.stringify({ kind, judge: blankToNull(judge), event: blankToNull(event), on: todayISO() }),
       ).catch(() => {});
+      haptics.saved();
       router.back();
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -341,7 +242,13 @@ export default function EvaluationScreen() {
         style: 'destructive',
         onPress: () => {
           allowLeave();
-          attempt(() => deleteEvaluation(existing!), () => router.back()).finally(blockLeave);
+          attempt(
+            () => deleteEvaluation(existing!),
+            () => {
+              haptics.deleted();
+              router.back();
+            },
+          ).finally(blockLeave);
         },
       },
     ]);
@@ -368,7 +275,14 @@ export default function EvaluationScreen() {
           text: 'Lock and sign',
           onPress: () => {
             allowLeave();
-            attempt(() => lockEvaluation(existing!.id), () => router.back(), "Couldn't lock").finally(blockLeave);
+            attempt(
+              () => lockEvaluation(existing!.id),
+              () => {
+                haptics.locked();
+                router.back();
+              },
+              "Couldn't lock",
+            ).finally(blockLeave);
           },
         },
       ],
@@ -385,8 +299,11 @@ export default function EvaluationScreen() {
     if (picked) setCertificate(picked);
   }
 
-  const shownPhoto = photo?.uri ?? photoUrl;
-  const shownCertificate = certificate?.uri ?? certificateUrl;
+  // Turning to another body part gives a light tick.
+  function changePart(index: number) {
+    if (index !== partIndex) haptics.selection();
+    setPartIndex(index);
+  }
 
   // Next on the number pad moves to the next score, turning to the next body part when needed.
   function focusNext(key: string) {
@@ -398,7 +315,7 @@ export default function EvaluationScreen() {
     }
     const nextPart = parts.indexOf(next.part);
     if (!allParts && nextPart !== partIndex) {
-      setPartIndex(nextPart);
+      changePart(nextPart);
       setTimeout(() => inputs.get(next.key)?.focus(), 80);
     } else {
       inputs.get(next.key)?.focus();
@@ -409,189 +326,70 @@ export default function EvaluationScreen() {
     <View style={styles.page}>
       <Screen>
         <Stack.Screen options={{ title: evalId ? 'Edit evaluation' : 'New evaluation' }} />
-        {sex === 'F' ? <Text style={[styles.sheetTitle, { color: theme.text }]}>Female Guppy Evaluation</Text> : null}
-        <Card>
-          <InfoRow label="Fish" value={fish.fish_code} />
-          <InfoRow label="Class" value={labelOf(TAIL_STANDARDS, klass.tail_standard as Fish['tail_standard'])} />
-          <InfoRow label="Base colour" value={labelOf(BASE_COLOURS, klass.base_colour)} />
-          <InfoRow label="Cover colour" value={klass.cover_colours.map((c) => labelOf(COVER_COLOURS, c)).join(', ')} />
-          <InfoRow label="Standard" value={`IHS ${existing?.standard_year ?? IHS_STANDARD_YEAR}`} />
-        </Card>
-        {locked ? (
-          <Card style={{ borderWidth: 1, borderColor: theme.accent }}>
-            <Body style={styles.dq}>Locked and signed by {existing!.judge}</Body>
-            <Muted>
-              {`Signed ${formatDate(existing!.locked_at!.slice(0, 10))} · seal ${existing!.seal}. This score can't be changed or deleted.`}
-            </Muted>
-          </Card>
-        ) : null}
+        {sex === 'F' ? <FemaleSheetTitle /> : null}
+        <ClassCard fishCode={fish.fish_code} klass={klass} standardYear={existing?.standard_year ?? IHS_STANDARD_YEAR} />
+        {locked ? <LockedNotice evaluation={existing!} /> : null}
         <View pointerEvents={locked ? 'none' : 'auto'} style={[styles.form, locked && styles.lockedForm]}>
+          {dq.length > 0 ? <DisqualifiedNotice dqText={dqText} /> : null}
 
-        {dq.length > 0 ? (
-          <Card style={{ borderWidth: 1, borderColor: theme.danger }}>
-            <Body style={[styles.dq, { color: theme.danger }]}>Disqualified: {dqText}</Body>
-            <Muted>Remove the reason under Body form if this was chosen by mistake.</Muted>
-          </Card>
-        ) : null}
-
-        <ChipSelect label="Kind" options={EVALUATION_KINDS} value={kind} onChange={(v) => v && setKind(v)} />
-        <DateField label="Date" value={date} onChange={setDate} />
-        {kind === 'official' ? (
-          <>
-            <Field label="Show or event" value={event} onChangeText={setEvent} />
-            <Muted>Official show results also appear under Shows on this fish and count toward season points.</Muted>
-          </>
-        ) : null}
-        <Field
-          label={kind === 'breeder' ? 'Scored by' : 'Judge'}
-          value={judge}
-          onChangeText={setJudge}
-          placeholder="Name"
-        />
-
-        {sex === 'F' ? <FemaleScoreSheet state={femaleState} onChange={changeFemale} /> : null}
-
-        {sex === 'M' ? (
-          <>
-            <ChipSelect
-              label="Body part"
-              options={parts.map((part, i) => ({
-                value: i,
-                label: `${part} ${pointsFor(categories.filter((c) => c.part === part))}`,
-              }))}
-              value={allParts ? null : partIndex}
-              onChange={(v) => {
-                if (v === null) return;
-                setAllParts(false);
-                setPartIndex(v);
-              }}
-            />
-            <Button
-              title={allParts ? 'One part at a time' : 'Show all parts'}
-              variant="secondary"
-              small
-              onPress={() => setAllParts(!allParts)}
-            />
-          </>
-        ) : null}
-
-        {sex === 'M' && (allParts ? parts : [parts[partIndex]]).map((part) => (
-          <Card key={part}>
-            <View style={styles.partHeader}>
-              <Heading>{part}</Heading>
-              {sex === 'M' ? (
-                <Muted>
-                  {pointsFor(categories.filter((c) => c.part === part))} /{' '}
-                  {categories.filter((c) => c.part === part).reduce((sum, c) => sum + c.max, 0)}
-                </Muted>
-              ) : null}
-            </View>
-            {categories
-              .filter((c) => c.part === part)
-              .map((c) => (
-                <ScoreRow
-                  key={c.key}
-                  category={c}
-                  value={scores[c.key] ?? ''}
-                  note={scoreNotes[c.key] ?? ''}
-                  onValue={(text) => setScores({ ...scores, [c.key]: text })}
-                  onNote={(text) => setScoreNotes({ ...scoreNotes, [c.key]: text })}
-                  reasonOptions={reasonOptions(c.key)}
-                  reasons={scoreReasons[c.key] ?? []}
-                  onReasons={(next) => setReasons(c.key, next)}
-                  inputRef={(input) => {
-                    inputs.set(c.key, input);
-                  }}
-                  onFocus={() => setFocused(c.key)}
-                  onNext={() => focusNext(c.key)}
-                  guide={
-                    sex === 'M'
-                      ? categoryGuide(c.key, klass.tail_standard as Fish['tail_standard'] | null, klass.base_colour)
-                      : []
-                  }
-                />
-              ))}
-          </Card>
-        ))}
-
-        {sex === 'M' && !allParts ? (
-          <View style={styles.buttons}>
-            <View style={{ flex: 1 }}>
-              <Button
-                title="Previous part"
-                variant="secondary"
-                small
-                disabled={partIndex === 0}
-                onPress={() => setPartIndex(partIndex - 1)}
-              />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Button
-                title="Next part"
-                small
-                disabled={partIndex === parts.length - 1}
-                onPress={() => setPartIndex(partIndex + 1)}
-              />
-            </View>
-          </View>
-        ) : null}
-
-        <Card style={styles.totalCard}>
-          {dq.length > 0 ? <Body style={[styles.total, { color: theme.danger }]}>Disqualified</Body> : null}
-          <Body style={dq.length > 0 ? styles.voidTotal : styles.total}>
-            {total} / {ihsMaxTotal(sex)}
-          </Body>
-          <Muted>
-            {dq.length > 0 ? 'Not a valid final result, because the entry is disqualified' : 'Total, added up from the scores above'}
-          </Muted>
-          {dq.length > 0 ? <Body style={[styles.dq, { color: theme.danger }]}>{dqText}</Body> : null}
-          {female && female.missing.length > 0 ? (
-            <Body style={styles.dq}>Incomplete: {female.missing.map((c) => c.label).join(', ')} not scored yet</Body>
+          <ChipSelect label="Kind" options={EVALUATION_KINDS} value={kind} onChange={(v) => v && setKind(v)} />
+          <DateField label="Date" value={date} onChange={setDate} />
+          {kind === 'official' ? (
+            <>
+              <Field label="Show or event" value={event} onChangeText={setEvent} />
+              <Muted>Official show results also appear under Shows on this fish and count toward season points.</Muted>
+            </>
           ) : null}
-        </Card>
+          <Field
+            label={kind === 'breeder' ? 'Scored by' : 'Judge'}
+            value={judge}
+            onChangeText={setJudge}
+            placeholder="Name"
+          />
 
-        {kind === 'official' ? (
-          <Field label="Placement or award" value={placement} onChangeText={setPlacement} placeholder="e.g. 1st, Best of Show" />
-        ) : null}
+          {sex === 'F' ? <FemaleScoreSheet state={femaleState} onChange={changeFemale} /> : null}
 
-        {kind === 'official' ? (
-          <Card>
-            <Heading>Official certificate</Heading>
-            {shownCertificate ? (
-              <Image source={{ uri: shownCertificate }} style={styles.certificate} contentFit="contain" />
-            ) : (
-              <Muted>
-                Take a picture of the judge&apos;s score sheet or certificate. It proves the score is official and prints as its own
-                page in the pedigree. Add it before locking, because a locked score can&apos;t change.
-              </Muted>
-            )}
-            {locked ? null : (
-              <View style={styles.buttons}>
-                <View style={{ flex: 1 }}>
-                  <Button title="Take photo" icon={Icons.camera} variant="secondary" small onPress={() => addCertificate('camera')} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Button title="Choose photo" icon={Icons.library} variant="secondary" small onPress={() => addCertificate('library')} />
-                </View>
-              </View>
-            )}
-          </Card>
-        ) : null}
+          {sex === 'M' ? (
+            <MaleScoring
+              categories={categories}
+              parts={parts}
+              partIndex={partIndex}
+              allParts={allParts}
+              onPart={changePart}
+              onAllParts={setAllParts}
+              pointsFor={pointsFor}
+              scores={scores}
+              scoreNotes={scoreNotes}
+              scoreReasons={scoreReasons}
+              onScore={(key, text) => setScores({ ...scores, [key]: text })}
+              onNote={(key, text) => setScoreNotes({ ...scoreNotes, [key]: text })}
+              onReasons={setReasons}
+              reasonOptions={reasonOptions}
+              guideFor={(key) => categoryGuide(key, klass.tail_standard as Fish['tail_standard'] | null, klass.base_colour)}
+              inputs={inputs}
+              onFocus={setFocused}
+              onNext={focusNext}
+            />
+          ) : null}
 
-        {shownPhoto ? (
-          <Image source={{ uri: shownPhoto }} style={styles.photo} contentFit="cover" />
-        ) : (
-          <Muted>Add a photo of the fish today, so this score can be checked against how it looked.</Muted>
-        )}
-        <View style={styles.buttons}>
-          <View style={{ flex: 1 }}>
-            <Button title="Take photo" icon={Icons.camera} variant="secondary" small onPress={() => addPhoto('camera')} />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Button title="Choose photo" icon={Icons.library} variant="secondary" small onPress={() => addPhoto('library')} />
-          </View>
-        </View>
-        <Field label="Notes" value={notes} onChangeText={setNotes} multiline />
+          <TotalCard
+            total={total}
+            max={ihsMaxTotal(sex)}
+            disqualified={dq.length > 0}
+            dqText={dqText}
+            missing={female ? female.missing.map((c) => c.label) : []}
+          />
+
+          {kind === 'official' ? (
+            <Field label="Placement or award" value={placement} onChangeText={setPlacement} placeholder="e.g. 1st, Best of Show" />
+          ) : null}
+
+          {kind === 'official' ? (
+            <CertificateCard uri={certificate?.uri ?? certificateUrl} locked={locked} onAdd={addCertificate} />
+          ) : null}
+
+          <ScorePhoto uri={photo?.uri ?? photoUrl} onAdd={addPhoto} />
+          <Field label="Notes" value={notes} onChangeText={setNotes} multiline />
         </View>
         <ErrorText message={error} />
         {locked ? null : (
@@ -607,82 +405,30 @@ export default function EvaluationScreen() {
               />
             ) : null}
             {evalId && unsaved ? <Muted>Save your changes before locking.</Muted> : null}
-            {evalId ? <Button title="Delete evaluation" variant="danger" onPress={confirmDelete} /> : null}
+            {evalId ? (
+              <DangerZone note="Deleting removes this score and its photos for good.">
+                <Button title="Delete evaluation" variant="danger" onPress={confirmDelete} />
+              </DangerZone>
+            ) : null}
           </>
         )}
-        {sex === 'M' && !locked ? <View style={styles.barSpace} /> : null}
+        {sex === 'M' && !locked ? <PinnedTotalSpace /> : null}
       </Screen>
       {sex === 'M' && !locked ? (
-        <View
-          style={[
-            styles.totalBar,
-            {
-              backgroundColor: theme.backgroundElement,
-              borderTopColor: theme.divider,
-              paddingBottom: insets.bottom + Spacing.two,
-            },
-          ]}>
-          <Text style={[styles.barTotal, { color: dq.length > 0 ? theme.danger : theme.text }]}>
-            {dq.length > 0 ? 'Disqualified' : `${total} / ${ihsMaxTotal(sex)}`}
-          </Text>
-          <Muted>{allParts ? 'Running total' : `${parts[partIndex]} · part ${partIndex + 1} of ${parts.length}`}</Muted>
-        </View>
+        <PinnedTotal
+          total={total}
+          max={ihsMaxTotal(sex)}
+          disqualified={dq.length > 0}
+          detail={allParts ? 'Running total' : `${parts[partIndex]} · part ${partIndex + 1} of ${parts.length}`}
+        />
       ) : null}
-      {Platform.OS === 'ios' ? (
-        <InputAccessoryView nativeID={SCORE_KEYBOARD}>
-          <View style={[styles.accessory, { backgroundColor: theme.backgroundElement, borderTopColor: theme.divider }]}>
-            <Button
-              title="Next"
-              small
-              onPress={() => (focused ? focusNext(focused) : undefined)}
-            />
-          </View>
-        </InputAccessoryView>
-      ) : null}
+      <ScoreKeyboardBar onNext={() => (focused ? focusNext(focused) : undefined)} />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  scoreRow: { gap: Spacing.one, paddingVertical: Spacing.one },
-  partHeader: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' },
-  guide: { fontSize: 12, lineHeight: 16 },
-  dq: { fontWeight: '700' },
-  scoreLine: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
-  scoreLabel: { flex: 1, fontSize: 16 },
-  input: { borderWidth: 1, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6, fontSize: 15 },
-  scoreInput: { width: 64, textAlign: 'center', fontSize: 17 },
-  noteInput: { fontSize: 14 },
-  max: { width: 36, fontSize: 15 },
-  totalCard: { alignItems: 'center', gap: 2 },
-  total: { fontSize: 32, lineHeight: 38, fontWeight: '700' },
-  voidTotal: { fontSize: 20, lineHeight: 26, textDecorationLine: 'line-through' },
-  sheetTitle: { fontSize: 24, fontWeight: '800' },
-  photo: { width: '100%', aspectRatio: 4 / 3, borderRadius: 12 },
-  certificate: { width: '100%', aspectRatio: 3 / 4, borderRadius: 8 },
-  buttons: { flexDirection: 'row', gap: Spacing.two },
   form: { gap: Spacing.three },
   page: { flex: 1 },
-  barSpace: { height: 96 },
-  totalBar: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.two,
-    borderTopWidth: StyleSheet.hairlineWidth,
-  },
-  barTotal: { fontSize: 22, fontWeight: '700' },
-  accessory: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.one,
-    borderTopWidth: StyleSheet.hairlineWidth,
-  },
   lockedForm: { opacity: 0.7 },
 });

@@ -1,5 +1,6 @@
 import { router } from 'expo-router';
 
+import { LineTank } from '@/components/line-icons';
 import { Button, Empty, ErrorText, ListRow, ListScreen, Loading, Muted } from '@/components/ui';
 import { Icons } from '@/constants/icons';
 import { labelOf, TANK_PURPOSES } from '@/lib/constants';
@@ -25,10 +26,10 @@ export default function TanksScreen() {
       data={data?.tanks ?? []}
       keyExtractor={(t) => t.id}
       onRefresh={reload}
-      empty={data ? <Empty>No tanks yet. Add your first tank to get its QR code.</Empty> : null}
+      empty={data ? <Empty art={<LineTank size={48} />}>No tanks yet. Add your first tank to get its QR code.</Empty> : null}
       renderItem={({ item: t }) => (
         <ListRow
-          icon={Icons.tank}
+          icon={<LineTank />}
           title={t.name ? `${t.tank_code} · ${t.name}` : t.tank_code}
           subtitle={[
             labelOf(TANK_PURPOSES, t.purpose),

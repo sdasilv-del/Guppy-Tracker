@@ -7,10 +7,11 @@ import { Spacing } from '@/constants/theme';
 import { FISH_STATUSES, INACTIVE_STATUSES, labelOf, TANK_PURPOSES } from '@/lib/constants';
 import {
   getTank,
-  listFish,
   listFishInTank,
+  listPicksFromSpawns,
   listSpawnEvents,
-  listSpawns,
+  listSpawnsByIds,
+  listSpawnsInTank,
   listCareLogs,
   listWaterChanges,
   listWaterTests,
@@ -44,20 +45,25 @@ export default function TankScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const unit = useAuth().profile?.temperature_unit ?? 'C';
   const { data, error, reload } = useFocusData(async () => {
-    const [tank, fish, tests, changes, allSpawns, movesIn, allFish, care] = await Promise.all([
+    const [tank, fish, tests, changes, spawns, movesIn, care] = await Promise.all([
       getTank(id),
       listFishInTank(id),
       listWaterTests(id),
       listWaterChanges(id),
-      listSpawns(),
+      listSpawnsInTank(id),
       spawnMovesIntoTank(id),
-      listFish(),
       listCareLogs(id),
     ]);
-    // Spawns kept in this tank, and spawns that had part of their batch moved here.
-    const spawns = allSpawns.filter((s) => s.tank_id === id);
-    const partSpawns = allSpawns.filter((s) => s.tank_id !== id && movesIn.some((m) => m.spawn_id === s.id));
-    const events = await listSpawnEvents([...spawns, ...partSpawns].map((s) => s.id));
+    // Spawns that had part of their batch moved here, and for the spawns kept here, their logs and
+    // the fish picked from them, to count the fry left.
+    const spawnIds = spawns.map((s) => s.id);
+    const movedIds = [...new Set(movesIn.map((m) => m.spawn_id))].filter((sid) => !spawnIds.includes(sid));
+    const [moved, events, allFish] = await Promise.all([
+      movedIds.length > 0 ? listSpawnsByIds(movedIds) : [],
+      spawnIds.length > 0 ? listSpawnEvents(spawnIds) : [],
+      spawnIds.length > 0 ? listPicksFromSpawns(spawnIds) : [],
+    ]);
+    const partSpawns = moved.filter((s) => s.tank_id !== id);
     return { tank, fish, tests, changes, spawns, partSpawns, movesIn, events, allFish, care };
   });
 

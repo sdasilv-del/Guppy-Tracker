@@ -1,8 +1,13 @@
 import { decode } from 'base64-arraybuffer';
+import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 
 import { type FishStatus, INACTIVE_STATUSES } from '@/lib/constants';
 import type { FishGene, Gene, GeneMode } from '@/lib/genetics';
 import type { LinePlan } from '@/lib/line-plan';
+import type { TablesInsert } from '@/lib/database.types';
+import { ALL_GENERATIONS, collectAncestors } from '@/lib/pedigree';
+import { THUMBNAIL_WIDTH, thumbnailOrPhoto, thumbnailPath } from '@/lib/photos';
+import type { ScoreSummary } from '@/lib/scores';
 import { supabase } from '@/lib/supabase';
 import type {
   BreedingGroup,
@@ -31,10 +36,20 @@ function must<T>(result: { data: T | null; error: { message: string } | null }):
   return result.data as T;
 }
 
+// Long id lists are asked for in parts, so the request address stays a safe length.
+const IDS_PER_REQUEST = 100;
+
+async function inParts<T>(ids: string[], read: (part: string[]) => Promise<T[]>): Promise<T[]> {
+  const unique = [...new Set(ids)];
+  const parts: string[][] = [];
+  for (let i = 0; i < unique.length; i += IDS_PER_REQUEST) parts.push(unique.slice(i, i + IDS_PER_REQUEST));
+  return (await Promise.all(parts.map(read))).flat();
+}
+
 // Tanks -------------------------------------------------------------------
 
 export async function listTanks(): Promise<Tank[]> {
-  return must(await supabase.from('tanks').select('*').order('seq'));
+  return must(await supabase.from('tanks').select('*').order('seq')) as Tank[];
 }
 
 export async function getTank(id: string): Promise<Tank | null> {
@@ -44,7 +59,7 @@ export async function getTank(id: string): Promise<Tank | null> {
 export type TankInput = Pick<Tank, 'name' | 'size_gallons' | 'purpose' | 'notes' | 'water_change_every_days'>;
 
 export async function createTank(input: TankInput): Promise<Tank> {
-  return must(await supabase.from('tanks').insert(input).select().single());
+  return must(await supabase.from('tanks').insert(input as TablesInsert<'tanks'>).select().single()) as Tank;
 }
 
 export async function updateTank(id: string, input: TankInput): Promise<void> {
@@ -164,7 +179,7 @@ export async function listCareLogs(tankId: string): Promise<CareLog[]> {
       .eq('tank_id', tankId)
       .order('logged_on', { ascending: false })
       .order('created_at', { ascending: false }),
-  );
+  ) as CareLog[];
 }
 
 export async function getCareLog(id: string): Promise<CareLog | null> {
@@ -203,21 +218,49 @@ export async function deleteCareLog(id: string): Promise<void> {
 // Fish --------------------------------------------------------------------
 
 export async function listFish(): Promise<Fish[]> {
-  return must(await supabase.from('fish').select('*').order('fish_code'));
+  return must(await supabase.from('fish').select('*').order('fish_code')) as Fish[];
 }
 
 export async function listFishInTank(tankId: string): Promise<Fish[]> {
-  return must(await supabase.from('fish').select('*').eq('tank_id', tankId).order('fish_code'));
+  return must(await supabase.from('fish').select('*').eq('tank_id', tankId).order('fish_code')) as Fish[];
 }
 
 export async function getFish(id: string): Promise<Fish | null> {
   return must(await supabase.from('fish').select('*').eq('id', id).maybeSingle());
 }
 
+// Only the fish asked for, e.g. one generation of a pedigree.
+export async function listFishByIds(ids: string[]): Promise<Fish[]> {
+  return inParts(ids, async (part) => must(await supabase.from('fish').select('*').in('id', part).order('fish_code')) as Fish[]);
+}
+
+// A fish's recorded ancestors, a generation per request. Leave out the depth to go all the way back,
+// which inbreeding figures need; the pedigree only shows PEDIGREE_DEPTH generations.
+export async function listAncestors(fish: Fish, generations = ALL_GENERATIONS): Promise<Fish[]> {
+  return collectAncestors(fish, listFishByIds, generations);
+}
+
+// Possible littermates: the same spawn, or the same sire and dam when the spawn isn't recorded.
+// littermates() in scores.ts makes the final choice and order.
+export async function listLittermates(fish: Fish): Promise<Fish[]> {
+  let query = supabase.from('fish').select('*').neq('id', fish.id);
+  if (fish.spawn_id) query = query.eq('spawn_id', fish.spawn_id);
+  else if (fish.sire_id && fish.dam_id) query = query.eq('sire_id', fish.sire_id).eq('dam_id', fish.dam_id);
+  else return [];
+  return must(await query.order('fish_code')) as Fish[];
+}
+
+// Fish with this fish as sire or dam.
+export async function listOffspring(fishId: string): Promise<Fish[]> {
+  return must(
+    await supabase.from('fish').select('*').or(`sire_id.eq.${fishId},dam_id.eq.${fishId}`).order('fish_code'),
+  ) as Fish[];
+}
+
 export type FishInput = Omit<Fish, 'id' | 'fish_code' | 'previous_codes' | 'created_at'>;
 
 export async function createFish(input: FishInput): Promise<Fish> {
-  return must(await supabase.from('fish').insert(input).select().single());
+  return must(await supabase.from('fish').insert(input as TablesInsert<'fish'>).select().single()) as Fish;
 }
 
 export async function updateFish(id: string, input: Partial<FishInput>): Promise<void> {
@@ -227,7 +270,7 @@ export async function updateFish(id: string, input: Partial<FishInput>): Promise
 export async function deleteFish(id: string): Promise<void> {
   const [photos, evaluations] = await Promise.all([listFishPhotos(id), listEvaluations(id)]);
   const paths = [
-    ...photos.map((p) => p.storage_path),
+    ...photos.flatMap((p) => [p.storage_path, thumbnailPath(p.storage_path)]),
     ...evaluations.flatMap((e) => [e.photo_path, e.certificate_path]).filter((p): p is string => !!p),
   ];
   if (paths.length > 0) {
@@ -309,6 +352,31 @@ export async function uploadPhoto(
   return path;
 }
 
+// A small JPEG copy of a photo for lists, returned as base64.
+async function makeThumbnail(base64: string, mimeType: string): Promise<string> {
+  const context = ImageManipulator.manipulate(`data:${mimeType};base64,${base64}`);
+  try {
+    const image = await context.resize({ width: THUMBNAIL_WIDTH }).renderAsync();
+    try {
+      const saved = await image.saveAsync({ format: SaveFormat.JPEG, compress: 0.7, base64: true });
+      if (!saved.base64) throw new Error('The thumbnail could not be made.');
+      return saved.base64;
+    } finally {
+      image.release();
+    }
+  } finally {
+    context.release();
+  }
+}
+
+// Saves the thumbnail next to the photo. It's an extra: if it fails, lists show the full photo instead.
+async function uploadThumbnail(path: string, base64: string, mimeType: string): Promise<void> {
+  try {
+    const small = await makeThumbnail(base64, mimeType);
+    await supabase.storage.from('fish-photos').upload(thumbnailPath(path), decode(small), { contentType: 'image/jpeg' });
+  } catch {}
+}
+
 export async function addFishPhoto(
   userId: string,
   fishId: string,
@@ -316,11 +384,13 @@ export async function addFishPhoto(
   mimeType: string,
 ): Promise<void> {
   const path = await uploadPhoto(userId, fishId, base64, mimeType);
+  // The thumbnail goes up before the photo is listed, so a list never looks for one still on its way.
+  await uploadThumbnail(path, base64, mimeType);
   must(await supabase.from('fish_photos').insert({ fish_id: fishId, storage_path: path }));
 }
 
 export async function deleteFishPhoto(photo: FishPhoto): Promise<void> {
-  await supabase.storage.from('fish-photos').remove([photo.storage_path]);
+  await supabase.storage.from('fish-photos').remove([photo.storage_path, thumbnailPath(photo.storage_path)]);
   must(await supabase.from('fish_photos').delete().eq('id', photo.id));
 }
 
@@ -349,6 +419,27 @@ export async function signedPhotoUrls(paths: string[]): Promise<Record<string, s
   return out;
 }
 
+// Links for list rows: each photo's thumbnail, or the full photo when it has none (older photos).
+// Thumbnails known to be missing aren't asked for again until the app restarts.
+const noThumbnail = new Set<string>();
+
+export async function signedThumbnailUrls(paths: string[]): Promise<Record<string, string>> {
+  const unique = [...new Set(paths)];
+  const tryThumbs = unique.filter((p) => !noThumbnail.has(thumbnailPath(p)));
+  let thumbs: Record<string, string> = {};
+  if (tryThumbs.length > 0) {
+    try {
+      thumbs = await signedPhotoUrls(tryThumbs.map(thumbnailPath));
+      for (const p of tryThumbs) if (!thumbs[thumbnailPath(p)]) noThumbnail.add(thumbnailPath(p));
+    } catch {
+      // Fall back to the full photos below.
+    }
+  }
+  const full = unique.filter((p) => !thumbs[thumbnailPath(p)]);
+  const photos = full.length > 0 ? await signedPhotoUrls(full) : {};
+  return thumbnailOrPhoto(unique, thumbs, photos);
+}
+
 // Traits ----------------------------------------------------------------------
 
 export async function listTraits(): Promise<Trait[]> {
@@ -372,7 +463,7 @@ export async function getGroup(id: string): Promise<BreedingGroup | null> {
 export type GroupInput = Omit<BreedingGroup, 'id' | 'group_code' | 'created_at'>;
 
 export async function createGroup(input: GroupInput): Promise<BreedingGroup> {
-  return must(await supabase.from('breeding_groups').insert(input).select().single());
+  return must(await supabase.from('breeding_groups').insert(input as TablesInsert<'breeding_groups'>).select().single());
 }
 
 export async function updateGroup(id: string, input: Partial<GroupInput>): Promise<void> {
@@ -414,7 +505,7 @@ async function setLinks(
     must(await supabase.from(table).delete().eq('group_id', groupId).in(column, removed));
   }
   if (added.length > 0) {
-    must(await supabase.from(table).insert(added.map((id) => ({ group_id: groupId, [column]: id }))));
+    must(await supabase.from(table).insert(added.map((id) => ({ group_id: groupId, [column]: id }) as TablesInsert<typeof table>)));
   }
 }
 
@@ -448,6 +539,44 @@ export async function listSpawns(): Promise<Spawn[]> {
   );
 }
 
+// Spawns kept in a tank, newest first.
+export async function listSpawnsInTank(tankId: string): Promise<Spawn[]> {
+  return must(
+    await supabase
+      .from('spawns')
+      .select('*')
+      .eq('tank_id', tankId)
+      .order('born_on', { ascending: false })
+      .order('seq', { ascending: false }),
+  );
+}
+
+// Only the spawns asked for, newest first.
+export async function listSpawnsByIds(ids: string[]): Promise<Spawn[]> {
+  return inParts(ids, async (part) =>
+    must(
+      await supabase
+        .from('spawns')
+        .select('*')
+        .in('id', part)
+        .order('born_on', { ascending: false })
+        .order('seq', { ascending: false }),
+    ),
+  );
+}
+
+// Spawns a fish was the sire or dam of, newest first.
+export async function listSpawnsWithParent(fishId: string): Promise<Spawn[]> {
+  return must(
+    await supabase
+      .from('spawns')
+      .select('*')
+      .or(`sire_id.eq.${fishId},dam_id.eq.${fishId}`)
+      .order('born_on', { ascending: false })
+      .order('seq', { ascending: false }),
+  );
+}
+
 export async function getSpawn(id: string): Promise<Spawn | null> {
   return must(await supabase.from('spawns').select('*').eq('id', id).maybeSingle());
 }
@@ -455,7 +584,7 @@ export async function getSpawn(id: string): Promise<Spawn | null> {
 export type SpawnInput = Omit<Spawn, 'id' | 'spawn_code' | 'created_at'>;
 
 export async function createSpawn(input: SpawnInput): Promise<Spawn> {
-  return must(await supabase.from('spawns').insert(input).select().single());
+  return must(await supabase.from('spawns').insert(input as TablesInsert<'spawns'>).select().single());
 }
 
 export async function updateSpawn(id: string, input: Partial<SpawnInput>): Promise<void> {
@@ -470,7 +599,7 @@ export async function deleteSpawn(id: string): Promise<void> {
 export async function listSpawnEvents(spawnIds?: string[]): Promise<SpawnEvent[]> {
   let query = supabase.from('spawn_events').select('*');
   if (spawnIds) query = query.in('spawn_id', spawnIds);
-  return must(await query.order('happened_on').order('created_at'));
+  return must(await query.order('happened_on').order('created_at')) as SpawnEvent[];
 }
 
 export async function getSpawnEvent(id: string): Promise<SpawnEvent | null> {
@@ -497,12 +626,19 @@ export async function spawnMovesIntoTank(tankId: string): Promise<SpawnEvent[]> 
       .eq('kind', 'move')
       .eq('to_tank_id', tankId)
       .order('happened_on', { ascending: false }),
-  );
+  ) as SpawnEvent[];
 }
 
 // Fish picked from a spawn.
 export async function listPicks(spawnId: string): Promise<Fish[]> {
-  return must(await supabase.from('fish').select('*').eq('spawn_id', spawnId).order('created_at'));
+  return must(await supabase.from('fish').select('*').eq('spawn_id', spawnId).order('created_at')) as Fish[];
+}
+
+// Fish picked from any of these spawns.
+export async function listPicksFromSpawns(spawnIds: string[]): Promise<Fish[]> {
+  return inParts(spawnIds, async (part) =>
+    must(await supabase.from('fish').select('*').in('spawn_id', part).order('created_at')) as Fish[],
+  );
 }
 
 // Trait records ---------------------------------------------------------------
@@ -556,7 +692,7 @@ export async function listEvaluations(fishId: string): Promise<Evaluation[]> {
       .eq('fish_id', fishId)
       .order('evaluated_on', { ascending: false })
       .order('created_at', { ascending: false }),
-  );
+  ) as Evaluation[];
 }
 
 // Every evaluation's score, for strain and generation stats.
@@ -573,7 +709,34 @@ export async function listEvaluationSummaries(): Promise<
       .from('evaluations')
       .select('id, fish_id, sex, total, kind, evaluated_on, event, placement')
       .order('evaluated_on', { ascending: false }),
+  ) as Evaluation[];
+}
+
+// Each fish's best IHS result, one row per fish, worked out by the database (fish_best_scores view).
+// Pass fish ids to limit it to those fish.
+export type BestScore = ScoreSummary & Pick<Evaluation, 'evaluated_on'> & { evaluation_id: string };
+
+const BEST_SCORE_COLUMNS = 'fish_id, evaluation_id, sex, total, kind, evaluated_on';
+
+export async function listBestScores(fishIds?: string[]): Promise<BestScore[]> {
+  // The view's columns are all nullable to Postgres, but every row comes from a real evaluation.
+  if (!fishIds) return must(await supabase.from('fish_best_scores').select(BEST_SCORE_COLUMNS)) as BestScore[];
+  return inParts(fishIds, async (part) =>
+    must(await supabase.from('fish_best_scores').select(BEST_SCORE_COLUMNS).in('fish_id', part)) as BestScore[],
   );
+}
+
+// Evaluations from a date on, without their sheet details, e.g. this season's for the Home insights.
+export async function listEvaluationSummariesSince(from: string): Promise<
+  Pick<Evaluation, 'id' | 'fish_id' | 'sex' | 'total' | 'kind' | 'evaluated_on' | 'event' | 'placement'>[]
+> {
+  return must(
+    await supabase
+      .from('evaluations')
+      .select('id, fish_id, sex, total, kind, evaluated_on, event, placement')
+      .gte('evaluated_on', from)
+      .order('evaluated_on', { ascending: false }),
+  ) as Pick<Evaluation, 'id' | 'fish_id' | 'sex' | 'total' | 'kind' | 'evaluated_on' | 'event' | 'placement'>[];
 }
 
 export async function getEvaluation(id: string): Promise<Evaluation | null> {
@@ -633,6 +796,22 @@ export async function listAllShowEntries(): Promise<ShowEntry[]> {
   );
 }
 
+// Show results for some fish only, e.g. a fish's relatives, newest first.
+export async function listShowEntriesForFish(fishIds: string[]): Promise<ShowEntry[]> {
+  const rows = await inParts(fishIds, async (part) =>
+    must(
+      await supabase
+        .from('show_entries')
+        .select('*')
+        .in('fish_id', part)
+        .not('evaluation_id', 'is', null)
+        .order('shown_on', { ascending: false })
+        .order('created_at', { ascending: false }),
+    ),
+  );
+  return rows.sort((a, b) => b.shown_on.localeCompare(a.shown_on) || b.created_at.localeCompare(a.created_at));
+}
+
 export async function getShowEntry(id: string): Promise<ShowEntry | null> {
   return must(await supabase.from('show_entries').select('*').eq('id', id).maybeSingle());
 }
@@ -679,6 +858,20 @@ export async function deleteSale(id: string): Promise<void> {
   must(await supabase.from('sales').delete().eq('id', id));
 }
 
+// The last few different buyers and the currency of the latest sale, offered on a new sale.
+export async function recentSaleTerms(limit = 5): Promise<{ buyers: string[]; currency: string | null }> {
+  const rows: Pick<Sale, 'buyer' | 'currency'>[] = must(
+    await supabase.from('sales').select('buyer, currency').order('created_at', { ascending: false }).limit(50),
+  );
+  const buyers: string[] = [];
+  for (const r of rows) {
+    const b = r.buyer?.trim();
+    if (b && !buyers.includes(b)) buyers.push(b);
+    if (buyers.length === limit) break;
+  }
+  return { buyers, currency: rows[0]?.currency ?? null };
+}
+
 // Reminders ---------------------------------------------------------------------
 
 export async function listCustomReminders(): Promise<CustomReminder[]> {
@@ -715,7 +908,7 @@ export async function snoozeReminder(key: string, until: string): Promise<void> 
 // Colour genes ------------------------------------------------------------------
 
 export async function listGenes(): Promise<Gene[]> {
-  return must(await supabase.from('genes').select('id, name, mode, notes').order('name'));
+  return must(await supabase.from('genes').select('id, name, mode, notes').order('name')) as Gene[];
 }
 
 export async function createGene(name: string, mode: GeneMode): Promise<Gene> {
@@ -748,7 +941,7 @@ export async function setFishGene(fishId: string, geneId: string, copies: number
 // Line plans ----------------------------------------------------------------------
 
 export async function listLinePlans(): Promise<LinePlan[]> {
-  return must(await supabase.from('line_plans').select('id, name, sire_id, dam_id, steps, notes, updated_at').order('updated_at', { ascending: false }));
+  return must(await supabase.from('line_plans').select('id, name, sire_id, dam_id, steps, notes, updated_at').order('updated_at', { ascending: false })) as unknown as LinePlan[];
 }
 
 export async function getLinePlan(id: string): Promise<LinePlan | null> {

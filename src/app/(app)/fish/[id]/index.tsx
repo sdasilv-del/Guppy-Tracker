@@ -9,7 +9,8 @@ import { FishFamily } from '@/components/fish-page/family';
 import { FishHistory } from '@/components/fish-page/history';
 import { FishOverview } from '@/components/fish-page/overview';
 import { FishScores } from '@/components/fish-page/scores';
-import { Button, ErrorText, Icon, Loading, Screen, SegmentedTabs } from '@/components/ui';
+import { LineGuppy } from '@/components/line-icons';
+import { Button, ErrorText, Loading, Screen, SegmentedTabs } from '@/components/ui';
 import { Icons } from '@/constants/icons';
 import { Display, Spacing } from '@/constants/theme';
 import { FISH_STATUSES, ihsMaxTotal, labelOf, SEXES, TAIL_OPTIONS } from '@/lib/constants';
@@ -64,18 +65,20 @@ export default function FishScreen() {
     setBusy(false);
   }
 
-  const byId = Object.fromEntries(data.allFish.map((f) => [f.id, f]));
+  // Inbreeding only looks up the tree, so the fish and its recorded ancestors are enough.
+  const lineage = [fish, ...data.ancestors];
+  const byId = Object.fromEntries(lineage.map((f) => [f.id, f]));
   const ctx: FishPageContext = {
     id,
     fish,
     data,
-    kin: makeKinship(data.allFish),
+    kin: makeKinship(lineage),
     sire: fish.sire_id ? byId[fish.sire_id] ?? null : null,
     dam: fish.dam_id ? byId[fish.dam_id] ?? null : null,
-    siblings: littermates(fish, data.allFish),
-    offspring: data.allFish.filter((f) => f.sire_id === id || f.dam_id === id),
-    fromSpawn: fish.spawn_id ? data.spawns.find((s) => s.id === fish.spawn_id) : null,
-    parentOf: data.spawns.filter((s) => s.sire_id === id || s.dam_id === id),
+    siblings: littermates(fish, data.siblings),
+    offspring: data.offspring,
+    fromSpawn: data.fromSpawn,
+    parentOf: data.parentOf,
     busy,
     photoWidth: width - Spacing.three * 2,
     addPhoto: async (source) => {
@@ -105,7 +108,7 @@ export default function FishScreen() {
           <Image source={{ uri: cover }} style={[styles.cover, { borderColor: theme.divider }]} contentFit="cover" />
         ) : (
           <View style={[styles.cover, styles.noCover, { backgroundColor: theme.backgroundElement, borderColor: theme.divider }]}>
-            <Icon name={Icons.fish} size={44} color={theme.accent} />
+            <LineGuppy tail={fish.tail_standard} size={96} />
           </View>
         )}
 

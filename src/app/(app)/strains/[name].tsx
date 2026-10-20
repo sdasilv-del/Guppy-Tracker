@@ -5,7 +5,7 @@ import { Body, Card, Empty, Heading, Icon, InfoRow, ListRow, LoadError, Loading,
 import { Icons } from '@/constants/icons';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { listEvaluationScores, listFish } from '@/lib/db';
+import { listBestScores, listFish } from '@/lib/db';
 import { type GenerationStats, type ScoreStats, strainGenerations } from '@/lib/strains';
 import { useFocusData } from '@/lib/use-data';
 
@@ -75,7 +75,8 @@ function GenerationCard({ gen, previous }: { gen: GenerationStats; previous: Gen
 export default function StrainScreen() {
   const { name } = useLocalSearchParams<{ name: string }>();
   const { data, error, reload } = useFocusData(async () => {
-    const [fish, scores] = await Promise.all([listFish(), listEvaluationScores()]);
+    // One best score per fish, from the database, rather than every evaluation.
+    const [fish, scores] = await Promise.all([listFish(), listBestScores()]);
     return strainGenerations(name, fish, scores);
   });
 

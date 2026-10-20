@@ -2,7 +2,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { Alert } from 'react-native';
 
 import { SpawnForm } from '@/components/spawn-form';
-import { Button, ErrorText, Loading, Screen } from '@/components/ui';
+import { Button, DangerZone, ErrorText, Loading, Screen } from '@/components/ui';
 import { deleteSpawn, getSpawn, groupMembers, listFish, listGroups, listTanks, updateSpawn } from '@/lib/db';
 import { useFocusData } from '@/lib/use-data';
 import { attempt } from '@/lib/alerts';
@@ -53,7 +53,9 @@ export default function EditSpawnScreen() {
           router.back();
         }}
       />
-      <Button title="Delete spawn" variant="danger" onPress={confirmDelete} />
+      <DangerZone note="Deleting removes this spawn and its log for good.">
+        <Button title="Delete spawn" variant="danger" onPress={confirmDelete} />
+      </DangerZone>
     </Screen>
   );
 }

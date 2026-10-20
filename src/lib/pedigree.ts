@@ -39,3 +39,29 @@ export function relationLabel(generation: number, index: number): string {
   const label = parts.join("'s ");
   return label[0].toUpperCase() + label.slice(1);
 }
+
+// Enough generations to reach the oldest recorded ancestor in any real line, and a stop for bad data.
+export const ALL_GENERATIONS = 50;
+
+// A fish's recorded ancestors, fetched one generation at a time: parents, then grandparents, and so on.
+// Each ancestor is fetched once even when it turns up on both sides. Ids are sorted so the same tree
+// asks for the same rows, which lets screens share the cached answer.
+export async function collectAncestors(
+  fish: Fish,
+  fetchByIds: (ids: string[]) => Promise<Fish[]>,
+  generations = PEDIGREE_DEPTH,
+): Promise<Fish[]> {
+  const found = new Map<string, Fish>();
+  const seen = new Set<string>([fish.id]);
+  let level: Fish[] = [fish];
+  for (let g = 1; g <= generations && level.length > 0; g++) {
+    const ids = [...new Set(level.flatMap((f) => [f.sire_id, f.dam_id]))]
+      .filter((p): p is string => !!p && !seen.has(p))
+      .sort();
+    if (ids.length === 0) break;
+    for (const p of ids) seen.add(p);
+    level = await fetchByIds(ids);
+    for (const f of level) found.set(f.id, f);
+  }
+  return [...found.values()];
+}
