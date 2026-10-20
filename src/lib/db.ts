@@ -51,6 +51,11 @@ export async function updateTank(id: string, input: TankInput): Promise<void> {
   must(await supabase.from('tanks').update(input).eq('id', id));
 }
 
+// Sets how often a tank's water is changed. The Home reminder counts from the last logged change.
+export async function setWaterChangeSchedule(tankId: string, everyDays: number | null): Promise<void> {
+  must(await supabase.from('tanks').update({ water_change_every_days: everyDays }).eq('id', tankId));
+}
+
 export async function deleteTank(id: string): Promise<void> {
   must(await supabase.from('tanks').delete().eq('id', id));
 }
@@ -223,7 +228,7 @@ export async function deleteFish(id: string): Promise<void> {
   const [photos, evaluations] = await Promise.all([listFishPhotos(id), listEvaluations(id)]);
   const paths = [
     ...photos.map((p) => p.storage_path),
-    ...evaluations.map((e) => e.photo_path).filter((p): p is string => !!p),
+    ...evaluations.flatMap((e) => [e.photo_path, e.certificate_path]).filter((p): p is string => !!p),
   ];
   if (paths.length > 0) {
     await supabase.storage.from('fish-photos').remove(paths);
@@ -280,6 +285,12 @@ export async function latestPhotoPaths(fishIds: string[]): Promise<Record<string
   const out: Record<string, string> = {};
   for (const r of rows) if (!out[r.fish_id]) out[r.fish_id] = r.storage_path;
   return out;
+}
+
+// Which fish have at least one photo, for the "records to finish" insight.
+export async function fishIdsWithPhotos(): Promise<Set<string>> {
+  const rows: Pick<FishPhoto, 'fish_id'>[] = must(await supabase.from('fish_photos').select('fish_id'));
+  return new Set(rows.map((r) => r.fish_id));
 }
 
 // Uploads a photo under the account's own folder and returns its storage path.
@@ -538,6 +549,18 @@ export async function listEvaluationScores(): Promise<Pick<Evaluation, 'fish_id'
   return must(await supabase.from('evaluations').select('fish_id, sex, total, kind'));
 }
 
+// Every evaluation without its sheet details, for the Home insights.
+export async function listEvaluationSummaries(): Promise<
+  Pick<Evaluation, 'id' | 'fish_id' | 'sex' | 'total' | 'kind' | 'evaluated_on' | 'event' | 'placement'>[]
+> {
+  return must(
+    await supabase
+      .from('evaluations')
+      .select('id, fish_id, sex, total, kind, evaluated_on, event, placement')
+      .order('evaluated_on', { ascending: false }),
+  );
+}
+
 export async function getEvaluation(id: string): Promise<Evaluation | null> {
   return must(await supabase.from('evaluations').select('*').eq('id', id).maybeSingle());
 }
@@ -564,7 +587,7 @@ export async function removeStoredPhotos(paths: string[]): Promise<void> {
 }
 
 export async function deleteEvaluation(evaluation: Evaluation): Promise<void> {
-  if (evaluation.photo_path) await removeStoredPhotos([evaluation.photo_path]);
+  await removeStoredPhotos([evaluation.photo_path, evaluation.certificate_path].filter((p): p is string => !!p));
   must(await supabase.from('evaluations').delete().eq('id', evaluation.id));
 }
 

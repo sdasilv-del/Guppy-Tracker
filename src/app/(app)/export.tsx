@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { Button, ChipSelect, Empty, ErrorText, Loading, Muted, Screen, Section } from '@/components/ui';
 import { Icons } from '@/constants/icons';
 import { useAuth } from '@/lib/auth';
-import { listAllShowEntries, listAllWaterTests, listFish, listSales, listTanks } from '@/lib/db';
+import { listAllShowEntries, listAllWaterTests, listEvaluationSummaries, listFish, listSales, listTanks } from '@/lib/db';
 import { fishCsv, listShows, salesCsv, showEntryListHtml, showsCsv, waterTestsCsv } from '@/lib/export';
 import { formatDate } from '@/lib/format';
 import { printHtml, shareCsv } from '@/lib/share';
@@ -14,8 +14,13 @@ type Job = 'fish' | 'sales' | 'shows' | 'water' | 'show-list';
 export default function ExportScreen() {
   const { profile } = useAuth();
   const { data, error } = useFocusData(async () => {
-    const [fish, tanks, entries] = await Promise.all([listFish(), listTanks(), listAllShowEntries()]);
-    return { fish, tanks, entries, shows: listShows(entries) };
+    const [fish, tanks, entries, scores] = await Promise.all([
+      listFish(),
+      listTanks(),
+      listAllShowEntries(),
+      listEvaluationSummaries(),
+    ]);
+    return { fish, tanks, entries, scores, shows: listShows(entries) };
   });
   const [busy, setBusy] = useState<Job | null>(null);
   const [jobError, setJobError] = useState<string | null>(null);
@@ -36,7 +41,7 @@ export default function ExportScreen() {
     }
   }
 
-  const { fish, tanks, entries, shows } = data;
+  const { fish, tanks, entries, scores, shows } = data;
   const show = showIndex !== null ? shows[showIndex] : undefined;
 
   return (
@@ -62,7 +67,7 @@ export default function ExportScreen() {
           icon={Icons.export}
           variant="secondary"
           busy={busy === 'shows'}
-          onPress={() => run('shows', () => shareCsv('shows', showsCsv(entries, fish)))}
+          onPress={() => run('shows', () => shareCsv('shows', showsCsv(entries, fish, scores)))}
         />
         <Button
           title="Water tests"
@@ -75,7 +80,7 @@ export default function ExportScreen() {
 
       <Section title="Show entry list">
         {shows.length === 0 ? (
-          <Empty>No show entries yet. Add one from a fish&apos;s page, then print the list here.</Empty>
+          <Empty>No show entries yet. Score a fish as an official show result, then print the list here.</Empty>
         ) : (
           <>
             <ChipSelect
@@ -89,9 +94,9 @@ export default function ExportScreen() {
               icon={Icons.print}
               disabled={!show}
               busy={busy === 'show-list'}
-              onPress={() => run('show-list', () => printHtml(showEntryListHtml(show!, entries, fish, profile)))}
+              onPress={() => run('show-list', () => printHtml(showEntryListHtml(show!, entries, fish, profile, scores)))}
             />
-            <Muted>Every fish entered in that show, with class, tail and colours. Print it or save it as a PDF.</Muted>
+            <Muted>Every fish entered in that show, with class, tail, colours, IHS score, placing and points. Print it or save it as a PDF.</Muted>
           </>
         )}
       </Section>

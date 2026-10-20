@@ -5,20 +5,22 @@ import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-nati
 import { Button, Card, ErrorText, Loading, Muted, Screen } from '@/components/ui';
 import { Icons } from '@/constants/icons';
 import { Spacing } from '@/constants/theme';
-import { labelOf, TAIL_STANDARDS } from '@/lib/constants';
+import { ihsMaxTotal, labelOf, SEXES, TAIL_STANDARDS } from '@/lib/constants';
+import { formatDate } from '@/lib/format';
 import { useAuth } from '@/lib/auth';
-import { latestPhotoPaths, listEvaluations, listFish, signedPhotoUrls } from '@/lib/db';
+import { latestPhotoPaths, listAllShowEntries, listEvaluationSummaries, listEvaluations, listFish, signedPhotoUrls } from '@/lib/db';
 import { bestEvaluation, certificateHtml } from '@/lib/export';
 import { pedigreeColumns, repeatedAncestors } from '@/lib/pedigree';
+import { littermates, resultsByFish } from '@/lib/scores';
 import { imageDataUri, printHtml } from '@/lib/share';
 import type { Fish } from '@/lib/types';
 import { useFocusData } from '@/lib/use-data';
 import { useTheme } from '@/hooks/use-theme';
 
 const COLUMN_TITLES = ['Fish', 'Parents', 'Grandparents', 'Great-grandparents', 'Great-great-grandparents'];
-const SLOT = 52;
+const SLOT = 64;
 
-function Box({ fish, role, highlight }: { fish: Fish | null; role: string; highlight: boolean }) {
+function Box({ fish, role, highlight, result }: { fish: Fish | null; role: string; highlight: boolean; result?: string }) {
   const theme = useTheme();
   const tail = fish ? labelOf(TAIL_STANDARDS, fish.tail_standard).split(' ').slice(1).join(' ') : '';
   return (
@@ -41,6 +43,11 @@ function Box({ fish, role, highlight }: { fish: Fish | null; role: string; highl
           {[fish.strain, fish.generation, tail].filter(Boolean).join(' · ')}
         </Text>
       ) : null}
+      {result ? (
+        <Text numberOfLines={1} style={[styles.detail, { color: theme.accent }]}>
+          {result}
+        </Text>
+      ) : null}
     </Pressable>
   );
 }
@@ -50,10 +57,13 @@ export default function PedigreeScreen() {
   const theme = useTheme();
   const { profile } = useAuth();
   const [printing, setPrinting] = useState(false);
-  const { data, error } = useFocusData(listFish);
+  const { data, error } = useFocusData(async () => {
+    const [fish, scores, shows] = await Promise.all([listFish(), listEvaluationSummaries(), listAllShowEntries()]);
+    return { fish, results: resultsByFish(scores, shows) };
+  });
 
   if (!data && !error) return <Loading />;
-  const byId = Object.fromEntries((data ?? []).map((f) => [f.id, f]));
+  const byId = Object.fromEntries((data?.fish ?? []).map((f) => [f.id, f]));
   const fish = byId[id];
   if (!fish) return <Screen><ErrorText message={error ?? 'This fish was not found in your account.'} /></Screen>;
 
@@ -61,11 +71,12 @@ export default function PedigreeScreen() {
   const repeated = repeatedAncestors(columns);
   const repeatedIds = new Set(repeated.map((r) => r.fish.id));
   const height = columns[columns.length - 1].length * SLOT;
+  const siblings = littermates(fish, data?.fish ?? []);
 
   return (
     <Screen>
       <Stack.Screen options={{ title: `${fish.fish_code} pedigree` }} />
-      <Muted>Sires are on top, dams below. Tap a fish to open it. Scroll sideways for older generations.</Muted>
+      <Muted>Sires are on top, dams below, with each fish&apos;s best IHS score and placing. Tap a fish to open it. Scroll sideways for older generations.</Muted>
 
       {repeated.length > 0 ? (
         <Card>
@@ -85,13 +96,31 @@ export default function PedigreeScreen() {
             <View style={[styles.slots, { height }]}>
               {column.map((f, i) => (
                 <View key={i} style={styles.slot}>
-                  <Box fish={f} role={g === 0 ? '' : i % 2 === 0 ? 'Sire' : 'Dam'} highlight={!!f && repeatedIds.has(f.id)} />
+                  <Box
+                    fish={f}
+                    role={g === 0 ? '' : i % 2 === 0 ? 'Sire' : 'Dam'}
+                    highlight={!!f && repeatedIds.has(f.id)}
+                    result={f ? data?.results.get(f.id) : undefined}
+                  />
                 </View>
               ))}
             </View>
           </View>
         ))}
       </ScrollView>
+
+      {siblings.length > 0 ? (
+        <Card>
+          <Text style={[styles.code, { color: theme.text }]}>Littermates</Text>
+          {siblings.map((f) => (
+            <Pressable key={f.id} onPress={() => router.push({ pathname: '/fish/[id]', params: { id: f.id } })}>
+              <Muted>
+                {[f.fish_code, labelOf(SEXES, f.sex), data?.results.get(f.id) ?? 'Not scored'].filter(Boolean).join(' · ')}
+              </Muted>
+            </Pressable>
+          ))}
+        </Card>
+      ) : null}
 
       <Button
         title="Print pedigree certificate"
@@ -111,7 +140,41 @@ export default function PedigreeScreen() {
                 if (url) photo = await imageDataUri(url);
               } catch {}
             }
-            await printHtml(certificateHtml(fish, data ?? [], profile, { photo, best: bestEvaluation(evaluations) }));
+            // Each official score's certificate photo gets a page of its own, oldest first.
+            const official = evaluations
+              .filter((e) => e.kind === 'official' && e.certificate_path)
+              .sort((a, b) => a.evaluated_on.localeCompare(b.evaluated_on));
+            const certificates: { image: string; caption: string }[] = [];
+            if (official.length > 0) {
+              const urls = await signedPhotoUrls(official.map((e) => e.certificate_path!));
+              for (const e of official) {
+                const url = urls[e.certificate_path!];
+                if (!url) continue;
+                const caption = [
+                  e.event,
+                  formatDate(e.evaluated_on),
+                  `IHS ${e.total} / ${ihsMaxTotal(e.sex)}`,
+                  e.placement,
+                  e.judge ? `judged by ${e.judge}` : null,
+                  e.locked_at ? `seal ${e.seal}` : null,
+                ]
+                  .filter(Boolean)
+                  .join(' · ');
+                // A certificate that can't be fetched is left out rather than stopping the print.
+                try {
+                  certificates.push({ image: await imageDataUri(url), caption });
+                } catch {}
+              }
+            }
+            await printHtml(
+              certificateHtml(fish, data?.fish ?? [], profile, {
+                photo,
+                best: bestEvaluation(evaluations),
+                results: data?.results,
+                siblings,
+                certificates,
+              }),
+            );
           } catch (e) {
             Alert.alert("Couldn't print", e instanceof Error ? e.message : String(e));
           } finally {
@@ -119,7 +182,7 @@ export default function PedigreeScreen() {
           }
         }}
       />
-      <Muted>A one-page certificate with the fish&apos;s photo, best IHS score and three generations, to give a buyer or save as a PDF.</Muted>
+      <Muted>A one-page certificate with the fish&apos;s photo, best IHS score, three generations and littermates with their scores, and a page for each official certificate, to give a buyer or save as a PDF.</Muted>
     </Screen>
   );
 }

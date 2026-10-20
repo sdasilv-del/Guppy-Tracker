@@ -1,7 +1,6 @@
 import { type Href, router, Stack } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
-import { useEffect, useState } from 'react';
-import { Alert, Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 import { Body, Button, Card, Empty, Heading, Icon, ListRow, LoadError, Muted, Screen, Section } from '@/components/ui';
 import { type IconName, Icons } from '@/constants/icons';
@@ -9,21 +8,24 @@ import { Spacing } from '@/constants/theme';
 import { INACTIVE_STATUSES } from '@/lib/constants';
 import { useAuth } from '@/lib/auth';
 import {
+  fishIdsWithPhotos,
+  groupMembers,
   lastWaterChangeByTank,
+  listAllShowEntries,
+  listAllWaterTests,
   listCustomReminders,
+  listEvaluationSummaries,
   listFish,
+  listGroups,
+  listSales,
   listSnoozes,
   listSpawnEvents,
   listSpawns,
   listTanks,
 } from '@/lib/db';
+import { buildInsights, DEFAULT_INSIGHT_SETTINGS, type Insight, type InsightKind } from '@/lib/insights';
 import { todayISO } from '@/lib/format';
-import {
-  disableNotifications,
-  enableNotifications,
-  notificationsEnabled,
-  scheduleReminderNotifications,
-} from '@/lib/notifications';
+import { scheduleReminderNotifications } from '@/lib/notifications';
 import { buildReminders, daysBetween, dueLabel, type Reminder, type ReminderKind } from '@/lib/reminders';
 import { summarizeBatch } from '@/lib/spawn';
 import { useFocusData } from '@/lib/use-data';
@@ -42,6 +44,36 @@ function Stat({ value, label, href, icon }: { value: number | undefined; label: 
         <Muted>{label}</Muted>
       </Card>
     </Pressable>
+  );
+}
+
+const INSIGHT_ICONS: Record<InsightKind, IconName> = {
+  water: Icons.waterTest,
+  losses: Icons.warning,
+  breeding: Icons.spawn,
+  inbreeding: Icons.pedigree,
+  top: Icons.show,
+  sales: Icons.sale,
+  crowded: Icons.tank,
+  records: Icons.edit,
+};
+
+function InsightList({ title, insights }: { title: string; insights: Insight[] }) {
+  const theme = useTheme();
+  if (insights.length === 0) return null;
+  return (
+    <Section title={title}>
+      {insights.map((i) => (
+        <ListRow
+          key={i.key}
+          icon={INSIGHT_ICONS[i.kind]}
+          title={i.title}
+          subtitle={i.detail}
+          right={i.warn ? <Icon name={Icons.warning} size={18} color={theme.danger} /> : undefined}
+          onPress={i.href ? () => router.push(i.href!) : undefined}
+        />
+      ))}
+    </Section>
   );
 }
 
@@ -101,10 +133,39 @@ export default function HomeScreen() {
       listSnoozes(),
     ]);
     const today = todayISO();
+    // Insights are extra: if any of these fail, Home still shows counts and reminders.
+    const insights = await Promise.all([
+      listAllWaterTests(),
+      listEvaluationSummaries(),
+      listAllShowEntries(),
+      listSales(),
+      listGroups(),
+      groupMembers(),
+      fishIdsWithPhotos(),
+    ])
+      .then(([waterTests, evaluations, shows, sales, groups, members, withPhotos]) =>
+        buildInsights({
+          today,
+          tanks,
+          fish,
+          spawns,
+          events,
+          waterTests,
+          evaluations,
+          shows,
+          sales,
+          groups,
+          members,
+          withPhotos,
+          settings: profile ?? DEFAULT_INSIGHT_SETTINGS,
+        }),
+      )
+      .catch(() => [] as Insight[]);
     const reminders = buildReminders({ tanks, lastWaterChange, spawns, events, fish, custom, snoozes, today });
     scheduleReminderNotifications(reminders).catch(() => {});
     return {
       today,
+      insights,
       reminders,
       hasSchedules: tanks.some((t) => t.water_change_every_days),
       tanks: tanks.length,
@@ -113,29 +174,6 @@ export default function HomeScreen() {
       forSale: fish.filter((f) => f.status === 'for_sale').length,
     };
   });
-
-  const [notifyOn, setNotifyOn] = useState<boolean | null>(null);
-  useEffect(() => {
-    notificationsEnabled().then(setNotifyOn);
-  }, []);
-
-  async function toggleNotifications() {
-    if (notifyOn) {
-      await disableNotifications();
-      setNotifyOn(false);
-      return;
-    }
-    const granted = await enableNotifications();
-    setNotifyOn(granted);
-    if (!granted) {
-      Alert.alert(
-        'Notifications are off',
-        'Turn on notifications for Guppy Tracker in your phone\'s Settings to get morning reminders.',
-      );
-      return;
-    }
-    if (data) await scheduleReminderNotifications(data.reminders);
-  }
 
   const today = data?.today ?? todayISO();
   const due = data?.reminders.filter((r) => r.due <= today) ?? [];
@@ -174,6 +212,8 @@ export default function HomeScreen() {
         <Stat value={data?.forSale} label="For sale" href="/fish" icon={{ ios: 'tag', android: 'sell' }} />
       </View>
 
+      <InsightList title="Needs attention" insights={data?.insights.filter((i) => i.warn) ?? []} />
+
       {data ? (
         <Section title="Today">
           {due.length === 0 ? <Empty>Nothing due today.</Empty> : null}
@@ -201,14 +241,8 @@ export default function HomeScreen() {
         </Section>
       ) : null}
 
-      {data && notifyOn !== null ? (
-        <Button
-          title={notifyOn ? 'Turn off morning reminders' : 'Remind me each morning'}
-          icon={Icons.reminder}
-          variant="secondary"
-          onPress={toggleNotifications}
-        />
-      ) : null}
+      <InsightList title="Insights" insights={data?.insights.filter((i) => !i.warn) ?? []} />
+
       <ListRow
         icon={Icons.show}
         title="Season points"
