@@ -78,6 +78,7 @@ export default function BreedingScreen() {
         <View style={styles.actions}>
           <Button title="Record a spawn" icon={Icons.spawn} small onPress={() => router.push('/spawns/new')} />
           <Button title="All spawns" small variant="secondary" onPress={() => router.push('/spawns')} />
+          <Button title="Results" small variant="secondary" onPress={() => router.push('/spawns/results')} />
         </View>
       </Section>
 
