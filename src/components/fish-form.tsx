@@ -15,6 +15,7 @@ import {
   Field,
   Muted,
   MultiChipSelect,
+  SegmentedTabs,
   ToggleField,
 } from '@/components/ui';
 import { Spacing } from '@/constants/theme';
@@ -140,6 +141,8 @@ export function FishForm({
   const [photo, setPhoto] = useState<PickedPhoto | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [step, setStep] = useState<Step>('looks');
+  const stepIndex = STEPS.findIndex((s) => s.value === step);
 
   const values = {
     name, sex, tail, baseColour, coverColours, strain, dob, generation, origin, foundation,
@@ -157,8 +160,19 @@ export function FishForm({
     if (picked) setPhoto(picked);
   }
 
+  function goTo(next: Step) {
+    // The tail standard is the one thing every fish needs, so it's checked before leaving the first step.
+    if (step === 'looks' && next !== 'looks' && !tail) {
+      setError('Pick the tail standard, or "Not sure yet".');
+      return;
+    }
+    setError(null);
+    setStep(next);
+  }
+
   async function submit(action = onSubmit) {
     if (!tail) {
+      setStep('looks');
       setError('Pick the tail standard, or "Not sure yet".');
       return;
     }
@@ -198,96 +212,133 @@ export function FishForm({
 
   return (
     <>
-      {!initial ? (
-        <Card>
-          {photo ? <Image source={{ uri: photo.uri }} style={styles.photo} contentFit="cover" /> : null}
-          <View style={styles.row}>
-            <View style={{ flex: 1 }}>
-              <Button title="Take photo" variant="secondary" small onPress={() => addPhoto('camera')} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Button title="Choose photo" variant="secondary" small onPress={() => addPhoto('library')} />
-            </View>
-          </View>
-        </Card>
+      <SegmentedTabs options={STEPS} value={step} onChange={goTo} />
+      <Muted>{`Step ${stepIndex + 1} of ${STEPS.length}: ${STEP_HINTS[step]}`}</Muted>
+
+      {step === 'looks' ? (
+        <>
+          {!initial ? (
+            <Card>
+              {photo ? <Image source={{ uri: photo.uri }} style={styles.photo} contentFit="cover" /> : null}
+              <View style={styles.row}>
+                <View style={{ flex: 1 }}>
+                  <Button title="Take photo" variant="secondary" small onPress={() => addPhoto('camera')} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Button title="Choose photo" variant="secondary" small onPress={() => addPhoto('library')} />
+                </View>
+              </View>
+            </Card>
+          ) : null}
+
+          {seed.spawn_id ? (
+            <Field
+              label="Why it was picked"
+              value={pickReason}
+              onChangeText={setPickReason}
+              multiline
+              placeholder="e.g. best dorsal in the batch, strong colour"
+            />
+          ) : null}
+          <ChipSelect label="Sex" options={SEXES} value={sex} onChange={(v) => v && setSex(v)} />
+          <TailPicker label="Tail standard (IKGH) *" value={tail} onChange={setTail} />
+          {tail === 'U' ? (
+            <Muted>You can pick the tail later. The fish gets a new ID then, and this one stays searchable.</Muted>
+          ) : null}
+          {sexChanges ? (
+            <Muted>
+              Changing sex or tail standard gives this fish a new ID. Its current ID {initial.fish_code} stays searchable.
+            </Muted>
+          ) : null}
+          <Muted>
+            Base colour is the body underneath. Cover colour is the colour and pattern on top. Not sure? Leave both blank
+            and add them later.
+          </Muted>
+          <ChipSelect
+            label="Base colour (IKGH)"
+            options={BASE_COLOURS}
+            value={baseColour}
+            onChange={setBaseColour}
+            allowClear
+          />
+          <MultiChipSelect
+            label="Cover colour (IKGH)"
+            options={COVER_COLOURS}
+            value={coverColours}
+            onChange={setCoverColours}
+          />
+          <Field label="Name" value={name} onChangeText={setName} placeholder="Optional" />
+          <Muted>* Required. Everything else can be added later.</Muted>
+        </>
       ) : null}
 
-      {seed.spawn_id ? (
-        <Field
-          label="Why it was picked"
-          value={pickReason}
-          onChangeText={setPickReason}
-          multiline
-          placeholder="e.g. best dorsal in the batch, strong colour"
-        />
+      {step === 'family' ? (
+        <>
+          <Field label="Strain" value={strain} onChangeText={setStrain} />
+          {strains.length > 0 ? (
+            <ChipSelect
+              label="Strains you've used"
+              options={strains.map((s) => ({ value: s, label: s }))}
+              value={strain}
+              onChange={(v) => setStrain(v ?? '')}
+            />
+          ) : null}
+          <DateField label="Date of birth" value={dob} onChange={setDob} optional />
+          <Field label="Generation" value={generation} onChangeText={setGeneration} placeholder="e.g. F2" />
+          <ParentField
+            label="Sire"
+            value={sireId}
+            candidates={others.filter((f) => f.sex === 'M' || f.id === sireId)}
+            onChange={setSireId}
+          />
+          <ParentField
+            label="Dam"
+            value={damId}
+            candidates={others.filter((f) => f.sex === 'F' || f.id === damId)}
+            onChange={setDamId}
+          />
+          <ChipSelect
+            label="Tank"
+            options={tanks.map((t) => ({ value: t.id, label: t.name ? `${t.tank_code} ${t.name}` : t.tank_code }))}
+            value={tankId}
+            onChange={setTankId}
+            allowClear
+          />
+          {tanks.find((t) => t.id === tankId)?.purpose === 'cull' ? (
+            <Muted>This is a cull tank, so the fish will be marked Culled.</Muted>
+          ) : null}
+          <ChipSelect label="Status" options={FISH_STATUSES} value={status} onChange={(v) => v && setStatus(v)} />
+        </>
       ) : null}
-      <ChipSelect label="Sex" options={SEXES} value={sex} onChange={(v) => v && setSex(v)} />
-      <TailPicker label="Tail standard (IKGH)" value={tail} onChange={setTail} />
-      {tail === 'U' ? (
-        <Muted>You can pick the tail later. The fish gets a new ID then, and this one stays searchable.</Muted>
+
+      {step === 'more' ? (
+        <>
+          <ChipSelect label="Origin" options={ORIGINS} value={origin} onChange={(v) => v && setOrigin(v)} />
+          <ToggleField label="Foundation fish" value={foundation} onChange={setFoundation} />
+          <Field
+            label="Original breeder"
+            value={originalBreeder}
+            onChangeText={setOriginalBreeder}
+            autoCapitalize="words"
+            autoCorrect={false}
+          />
+          <Field label="Notes" value={notes} onChangeText={setNotes} multiline />
+        </>
       ) : null}
-      {sexChanges ? (
-        <Muted>
-          Changing sex or tail standard gives this fish a new ID. Its current ID {initial.fish_code} stays searchable.
-        </Muted>
-      ) : null}
-      <Muted>
-        Base colour is the body underneath. Cover colour is the colour and pattern on top. Not sure? Leave both blank
-        and add them later.
-      </Muted>
-      <ChipSelect
-        label="Base colour (IKGH)"
-        options={BASE_COLOURS}
-        value={baseColour}
-        onChange={setBaseColour}
-        allowClear
-      />
-      <MultiChipSelect
-        label="Cover colour (IKGH)"
-        options={COVER_COLOURS}
-        value={coverColours}
-        onChange={setCoverColours}
-      />
-      <Field label="Name" value={name} onChangeText={setName} placeholder="Optional" />
-      <Field label="Strain" value={strain} onChangeText={setStrain} />
-      {strains.length > 0 ? (
-        <ChipSelect
-          label="Strains you've used"
-          options={strains.map((s) => ({ value: s, label: s }))}
-          value={strain}
-          onChange={(v) => setStrain(v ?? '')}
-        />
-      ) : null}
-      <DateField label="Date of birth" value={dob} onChange={setDob} optional />
-      <Field label="Generation" value={generation} onChangeText={setGeneration} placeholder="e.g. F2" />
-      <ChipSelect label="Origin" options={ORIGINS} value={origin} onChange={(v) => v && setOrigin(v)} />
-      <ToggleField label="Foundation fish" value={foundation} onChange={setFoundation} />
-      <Field label="Original breeder" value={originalBreeder} onChangeText={setOriginalBreeder} />
-      <ParentField
-        label="Sire"
-        value={sireId}
-        candidates={others.filter((f) => f.sex === 'M' || f.id === sireId)}
-        onChange={setSireId}
-      />
-      <ParentField
-        label="Dam"
-        value={damId}
-        candidates={others.filter((f) => f.sex === 'F' || f.id === damId)}
-        onChange={setDamId}
-      />
-      <ChipSelect
-        label="Tank"
-        options={tanks.map((t) => ({ value: t.id, label: t.name ? `${t.tank_code} ${t.name}` : t.tank_code }))}
-        value={tankId}
-        onChange={setTankId}
-        allowClear
-      />
-      {tanks.find((t) => t.id === tankId)?.purpose === 'cull' ? (
-        <Muted>This is a cull tank, so the fish will be marked Culled.</Muted>
-      ) : null}
-      <ChipSelect label="Status" options={FISH_STATUSES} value={status} onChange={(v) => v && setStatus(v)} />
-      <Field label="Notes" value={notes} onChangeText={setNotes} multiline />
+
       <ErrorText message={error} />
+      <View style={styles.row}>
+        {stepIndex > 0 ? (
+          <View style={{ flex: 1 }}>
+            <Button title="Back" variant="secondary" onPress={() => goTo(STEPS[stepIndex - 1].value)} />
+          </View>
+        ) : null}
+        {stepIndex < STEPS.length - 1 ? (
+          <View style={{ flex: 1 }}>
+            <Button title="Next" variant="secondary" onPress={() => goTo(STEPS[stepIndex + 1].value)} />
+          </View>
+        ) : null}
+      </View>
       <Button title={submitLabel} onPress={() => submit()} busy={busy} />
       {againLabel && onSubmitAgain ? (
         <Button title={againLabel} variant="secondary" onPress={() => submit(onSubmitAgain)} disabled={busy} />
@@ -295,6 +346,21 @@ export function FishForm({
     </>
   );
 }
+
+// The fish form in three short steps. Save works from any step, so a quick entry can stop after the first.
+const STEPS = [
+  { value: 'looks', label: 'Looks' },
+  { value: 'family', label: 'Family & tank' },
+  { value: 'more', label: 'More' },
+] as const;
+
+type Step = (typeof STEPS)[number]['value'];
+
+const STEP_HINTS: Record<Step, string> = {
+  looks: 'photo, sex, tail and colours',
+  family: 'strain, parents, tank and status',
+  more: 'origin, original breeder and notes',
+};
 
 const styles = StyleSheet.create({
   field: { gap: Spacing.one + 2 },
