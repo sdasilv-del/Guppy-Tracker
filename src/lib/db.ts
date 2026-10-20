@@ -569,6 +569,8 @@ export async function deleteEvaluation(evaluation: Evaluation): Promise<void> {
 }
 
 // Show entries ------------------------------------------------------------------
+// The database adds an entry for every official show score. Only those are listed; hand-made entries
+// from before that are kept but not shown.
 
 export async function listShowEntries(fishId: string): Promise<ShowEntry[]> {
   return must(
@@ -576,6 +578,7 @@ export async function listShowEntries(fishId: string): Promise<ShowEntry[]> {
       .from('show_entries')
       .select('*')
       .eq('fish_id', fishId)
+      .not('evaluation_id', 'is', null)
       .order('shown_on', { ascending: false })
       .order('created_at', { ascending: false }),
   );
@@ -586,6 +589,7 @@ export async function listAllShowEntries(): Promise<ShowEntry[]> {
     await supabase
       .from('show_entries')
       .select('*')
+      .not('evaluation_id', 'is', null)
       .order('shown_on', { ascending: false })
       .order('created_at', { ascending: false }),
   );
@@ -595,15 +599,11 @@ export async function getShowEntry(id: string): Promise<ShowEntry | null> {
   return must(await supabase.from('show_entries').select('*').eq('id', id).maybeSingle());
 }
 
-export type ShowEntryInput = Omit<ShowEntry, 'id' | 'created_at'>;
+export type ShowEntryInput = Omit<ShowEntry, 'id' | 'created_at' | 'evaluation_id'>;
 
 export async function saveShowEntry(id: string | null, input: ShowEntryInput): Promise<void> {
   if (id) must(await supabase.from('show_entries').update(input).eq('id', id));
   else must(await supabase.from('show_entries').insert(input));
-}
-
-export async function deleteShowEntry(id: string): Promise<void> {
-  must(await supabase.from('show_entries').delete().eq('id', id));
 }
 
 // Sales ---------------------------------------------------------------------------

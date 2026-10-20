@@ -344,16 +344,10 @@ export default function FishScreen() {
         ) : null}
       </Section>
 
-      <Section
-        title="Shows"
-        action={
-          <Button
-            title="Add entry"
-            small
-            onPress={() => router.push({ pathname: '/fish/[id]/show', params: { id } })}
-          />
-        }>
-        {data.shows.length === 0 ? <Empty>No show entries yet.</Empty> : null}
+      <Section title="Shows">
+        {data.shows.length === 0 ? (
+          <Empty>Shows appear here when you score this fish as an official show result.</Empty>
+        ) : null}
         {data.shows.map((e) => (
           <ListRow
             icon={Icons.show}

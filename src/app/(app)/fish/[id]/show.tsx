@@ -1,33 +1,30 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Alert } from 'react-native';
 
-import { Button, DateField, ErrorText, Field, Loading, Muted, NumberField, Screen } from '@/components/ui';
-import { attempt } from '@/lib/alerts';
-import { deleteShowEntry, getShowEntry, saveShowEntry } from '@/lib/db';
-import { blankToNull, numberText, parseNumber, todayISO } from '@/lib/format';
+import { Button, Card, ErrorText, Field, InfoRow, Loading, Muted, NumberField, Screen } from '@/components/ui';
+import { Icons } from '@/constants/icons';
+import { getShowEntry, saveShowEntry } from '@/lib/db';
+import { blankToNull, formatDate, numberText, parseNumber } from '@/lib/format';
+import type { ShowEntry } from '@/lib/types';
 
+// A show entry made from an official score. The show, date and placing come from the score;
+// the class, points and notes are added here.
 export default function ShowEntryScreen() {
-  const { id, entryId } = useLocalSearchParams<{ id: string; entryId?: string }>();
-  const [loading, setLoading] = useState(!!entryId);
-  const [show, setShow] = useState('');
-  const [date, setDate] = useState<string | null>(todayISO());
+  const { id, entryId } = useLocalSearchParams<{ id: string; entryId: string }>();
+  const [entry, setEntry] = useState<ShowEntry | null>(null);
+  const [loading, setLoading] = useState(true);
   const [showClass, setShowClass] = useState('');
-  const [placing, setPlacing] = useState('');
   const [points, setPoints] = useState('');
   const [notes, setNotes] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!entryId) return;
     getShowEntry(entryId)
       .then((e) => {
         if (e) {
-          setShow(e.show_name);
-          setDate(e.shown_on);
+          setEntry(e);
           setShowClass(e.show_class ?? '');
-          setPlacing(e.placement ?? '');
           setPoints(numberText(e.points));
           setNotes(e.notes ?? '');
         }
@@ -40,13 +37,10 @@ export default function ShowEntryScreen() {
   }, [entryId]);
 
   if (loading) return <Loading />;
+  if (!entry) return <Screen><ErrorText message={error ?? 'Show entry not found.'} /></Screen>;
 
   async function save() {
     const pts = parseNumber(points);
-    if (!show.trim()) {
-      setError('Enter the name of the show.');
-      return;
-    }
     if (points.trim() !== '' && pts === null) {
       setError('Points must be a number.');
       return;
@@ -54,12 +48,12 @@ export default function ShowEntryScreen() {
     setBusy(true);
     setError(null);
     try {
-      await saveShowEntry(entryId ?? null, {
+      await saveShowEntry(entry!.id, {
         fish_id: id,
-        show_name: show.trim(),
-        shown_on: date ?? todayISO(),
+        show_name: entry!.show_name,
+        shown_on: entry!.shown_on,
         show_class: blankToNull(showClass),
-        placement: blankToNull(placing),
+        placement: entry!.placement,
         points: pts,
         notes: blankToNull(notes),
       });
@@ -70,29 +64,28 @@ export default function ShowEntryScreen() {
     }
   }
 
-  function confirmDelete() {
-    Alert.alert('Delete this show entry?', undefined, [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: () => attempt(() => deleteShowEntry(entryId!), () => router.back()),
-      },
-    ]);
-  }
-
   return (
     <Screen>
-      <Field label="Show" value={show} onChangeText={setShow} placeholder="e.g. IKGH Spring Show" />
-      <DateField label="Date" value={date} onChange={setDate} />
+      <Card>
+        <InfoRow label="Show" value={entry.show_name} />
+        <InfoRow label="Date" value={formatDate(entry.shown_on)} />
+        <InfoRow label="Placing" value={entry.placement} />
+      </Card>
+      <Muted>The show, date and placing come from the official score. Change them there.</Muted>
+      {entry.evaluation_id ? (
+        <Button
+          title="Open the score"
+          icon={Icons.evaluation}
+          variant="secondary"
+          small
+          onPress={() => router.push({ pathname: '/fish/[id]/evaluation', params: { id, evalId: entry.evaluation_id! } })}
+        />
+      ) : null}
       <Field label="Class" value={showClass} onChangeText={setShowClass} placeholder="e.g. A2 Triangle, male" />
-      <Field label="Placing" value={placing} onChangeText={setPlacing} placeholder="e.g. 1st, Best in Show" />
       <NumberField label="Points" value={points} onChangeText={setPoints} placeholder="Optional" />
       <Field label="Notes" value={notes} onChangeText={setNotes} multiline />
-      <Muted>Record the judge&apos;s score sheet separately under IHS evaluations.</Muted>
       <ErrorText message={error} />
-      <Button title={entryId ? 'Save changes' : 'Save show entry'} onPress={save} busy={busy} />
-      {entryId ? <Button title="Delete show entry" variant="danger" onPress={confirmDelete} /> : null}
+      <Button title="Save changes" onPress={save} busy={busy} />
     </Screen>
   );
 }

@@ -354,7 +354,12 @@ export default function EvaluationScreen() {
 
       <ChipSelect label="Kind" options={EVALUATION_KINDS} value={kind} onChange={(v) => v && setKind(v)} />
       <DateField label="Date" value={date} onChange={setDate} />
-      {kind === 'official' ? <Field label="Show or event" value={event} onChangeText={setEvent} /> : null}
+      {kind === 'official' ? (
+        <>
+          <Field label="Show or event" value={event} onChangeText={setEvent} />
+          <Muted>Official show results also appear under Shows on this fish and count toward season points.</Muted>
+        </>
+      ) : null}
       <Field
         label={kind === 'breeder' ? 'Scored by' : 'Judge'}
         value={judge}

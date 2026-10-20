@@ -175,6 +175,8 @@ export type Evaluation = {
 export type ShowEntry = {
   id: string;
   fish_id: string;
+  // The official score this entry came from. Show, date and placing follow it.
+  evaluation_id: string | null;
   show_name: string;
   shown_on: string;
   show_class: string | null;
