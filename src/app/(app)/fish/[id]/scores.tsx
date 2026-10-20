@@ -8,6 +8,7 @@ import { EVALUATION_KINDS, ihsCategories, ihsMaxTotal, labelOf } from '@/lib/con
 import { getFish, listEvaluations, signedPhotoUrls } from '@/lib/db';
 import { formatDate } from '@/lib/format';
 import { isDisqualified } from '@/lib/ihs-reasons';
+import { scoreHistorySummary } from '@/lib/scores';
 import type { Evaluation } from '@/lib/types';
 import { useFocusData } from '@/lib/use-data';
 import { useTheme } from '@/hooks/use-theme';
@@ -45,7 +46,11 @@ export default function ScoreHistoryScreen() {
       {evaluations.length > 1 ? (
         <Card>
           <Muted>Total score at each judging, oldest on the left{evaluations.length > 12 ? ' (latest 12)' : ''}</Muted>
-          <View style={styles.chart} accessibilityLabel="Score history chart">
+          <View
+            style={styles.chart}
+            accessible
+            accessibilityRole="image"
+            accessibilityLabel={`Score history chart. ${scoreHistorySummary(evaluations, formatDate)}`}>
             {evaluations.slice(-12).map((e) => {
               const share = e.total / ihsMaxTotal(e.sex);
               return (
@@ -125,7 +130,7 @@ export default function ScoreHistoryScreen() {
 }
 
 const styles = StyleSheet.create({
-  chart: { flexDirection: 'row', alignItems: 'flex-end', gap: Spacing.two, height: 170, paddingTop: Spacing.two },
+  chart: { flexDirection: 'row', alignItems: 'flex-end', gap: Spacing.two, minHeight: 170, paddingTop: Spacing.two },
   barColumn: { flex: 1, alignItems: 'center', justifyContent: 'flex-end', gap: 2 },
   bar: { width: '70%', borderRadius: 4 },
   barValue: { fontSize: 12, fontWeight: '600' },
