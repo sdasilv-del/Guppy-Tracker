@@ -1,6 +1,7 @@
 import { router } from 'expo-router';
 
 import type { FishPageContext } from '@/components/fish-page/data';
+import { LineGuppy, LineSpawn } from '@/components/line-icons';
 import { fishLabel } from '@/components/fish-picker';
 import { Button, Empty, ListRow, Muted, Section } from '@/components/ui';
 import { Icons } from '@/constants/icons';
@@ -26,12 +27,12 @@ export function FishFamily({ ctx }: { ctx: FishPageContext }) {
           />
         }>
         {sire ? (
-          <ListRow icon={Icons.fish} title={`Sire · ${sire.fish_code}`} subtitle={withResult(sire)} onPress={() => openFish(sire.id)} />
+          <ListRow icon={<LineGuppy tail={sire.tail_standard} />} title={`Sire · ${sire.fish_code}`} subtitle={withResult(sire)} onPress={() => openFish(sire.id)} />
         ) : (
           <ListRow title="Sire · Unknown" />
         )}
         {dam ? (
-          <ListRow icon={Icons.fish} title={`Dam · ${dam.fish_code}`} subtitle={withResult(dam)} onPress={() => openFish(dam.id)} />
+          <ListRow icon={<LineGuppy tail={dam.tail_standard} />} title={`Dam · ${dam.fish_code}`} subtitle={withResult(dam)} onPress={() => openFish(dam.id)} />
         ) : (
           <ListRow title="Dam · Unknown" />
         )}
@@ -48,7 +49,7 @@ export function FishFamily({ ctx }: { ctx: FishPageContext }) {
             const best = data.bestScores.get(f.id);
             return (
               <ListRow
-                icon={Icons.fish}
+                icon={<LineGuppy tail={f.tail_standard} />}
                 key={f.id}
                 title={best ? `${f.fish_code} · ${scoreLabel(best)}` : f.fish_code}
                 subtitle={[labelOf(SEXES, f.sex), labelOf(FISH_STATUSES, f.status), data.bestPlacings.get(f.id)]
@@ -79,7 +80,7 @@ export function FishFamily({ ctx }: { ctx: FishPageContext }) {
         <Section title={`Spawns as a parent (${parentOf.length})`}>
           {parentOf.map((s) => (
             <ListRow
-              icon={Icons.spawn}
+              icon={<LineSpawn />}
               key={s.id}
               title={`${s.spawn_code} · born ${formatDate(s.born_on)}`}
               subtitle={`${s.fry_count} fry at birth`}
@@ -93,7 +94,7 @@ export function FishFamily({ ctx }: { ctx: FishPageContext }) {
         {offspring.length === 0 ? <Empty>No recorded offspring yet.</Empty> : null}
         {offspring.map((f) => (
           <ListRow
-            icon={Icons.fish}
+            icon={<LineGuppy tail={f.tail_standard} />}
             key={f.id}
             title={f.fish_code}
             subtitle={[f.name, f.strain, labelOf(FISH_STATUSES, f.status), data.results.get(f.id)].filter(Boolean).join(' · ')}

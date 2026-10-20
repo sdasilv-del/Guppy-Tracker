@@ -1,7 +1,10 @@
 import { router } from 'expo-router';
+import { StyleSheet, View } from 'react-native';
 
+import { LineSpawn } from '@/components/line-icons';
 import { Button, Empty, ErrorText, Heading, ListRow, ListScreen, Loading, Muted } from '@/components/ui';
 import { Icons } from '@/constants/icons';
+import { Spacing } from '@/constants/theme';
 import { listFish, listSpawnEvents, listSpawns } from '@/lib/db';
 import { formatAge, formatDate } from '@/lib/format';
 import { summarizeBatch } from '@/lib/spawn';
@@ -40,7 +43,7 @@ export default function SpawnsScreen() {
 
   const row = ({ spawn: s, batch }: { spawn: Spawn; batch: ReturnType<typeof summarizeBatch> }) => (
     <ListRow
-      icon={Icons.spawn}
+      icon={<LineSpawn />}
       title={`${s.spawn_code} · ${s.sire_id ? codes[s.sire_id] ?? '?' : 'Unknown'} × ${
         s.dam_id ? codes[s.dam_id] ?? '?' : 'Unknown'
       }`}
@@ -65,14 +68,14 @@ export default function SpawnsScreen() {
       onRefresh={reload}
       renderItem={({ item }) =>
         'heading' in item ? (
-          <>
+          <View style={styles.heading}>
             <Heading>{item.heading}</Heading>
             {item.note === 'none' ? (
-              <Empty>No fry batches growing out. Record a spawn from a breeding group.</Empty>
+              <Empty art={<LineSpawn size={44} />}>No fry batches growing out. Record a spawn from a breeding group.</Empty>
             ) : item.note ? (
               <Muted>{item.note}</Muted>
             ) : null}
-          </>
+          </View>
         ) : (
           row(item)
         )
@@ -80,3 +83,8 @@ export default function SpawnsScreen() {
     />
   );
 }
+
+// A heading between groups of hairline rows, with room above it.
+const styles = StyleSheet.create({
+  heading: { gap: Spacing.two, paddingTop: Spacing.three, paddingBottom: Spacing.two },
+});

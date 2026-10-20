@@ -1,17 +1,16 @@
-import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect, useMemo, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
-import { Button, ChipSelect, Empty, ErrorText, Field, Icon, ListScreen, Loading, Muted } from '@/components/ui';
+import { FishRow } from '@/components/fish-row';
+import { LineGuppy } from '@/components/line-icons';
+import { Button, ChipSelect, Empty, ErrorText, Field, ListScreen, Loading, Muted } from '@/components/ui';
 import { Icons } from '@/constants/icons';
 import { Spacing } from '@/constants/theme';
-import { FISH_STATUSES, INACTIVE_STATUSES, labelOf, SEXES, type Sex, TAIL_OPTIONS, type TailStandard } from '@/lib/constants';
+import { FISH_STATUSES, INACTIVE_STATUSES, SEXES, type Sex, TAIL_OPTIONS, type TailStandard } from '@/lib/constants';
 import { latestPhotoPaths, listFish, listTanks, signedPhotoUrls } from '@/lib/db';
-import { formatAge } from '@/lib/format';
 import { useFocusData } from '@/lib/use-data';
-import { useTheme } from '@/hooks/use-theme';
 
 const FILTERS = [
   { value: 'active', label: 'In the fish room' },
@@ -35,7 +34,6 @@ const NO_FILTERS: Filters = { status: 'active', sex: null, tail: null, strain: n
 const FILTERS_KEY = 'gt-fish-filters';
 
 export default function FishListScreen() {
-  const theme = useTheme();
   const [query, setQuery] = useState('');
   const [filters, setFilters] = useState<Filters>(NO_FILTERS);
   const [showMore, setShowMore] = useState(false);
@@ -165,53 +163,26 @@ export default function FishListScreen() {
       keyExtractor={(f) => f.id}
       extraData={[selecting, selected]}
       onRefresh={reload}
-      empty={<Empty>{data?.fish.length ? 'No fish match.' : 'No fish yet. Add your first fish.'}</Empty>}
+      empty={<Empty art={<LineGuppy size={56} />}>{data?.fish.length ? 'No fish match.' : 'No fish yet. Add your first fish.'}</Empty>}
       renderItem={({ item: f }) => (
-        <Pressable
+        <FishRow
+          fish={f}
+          thumb={data?.thumbs[f.id]}
+          tankName={f.tank_id ? data?.tankNames[f.tank_id] : null}
+          selecting={selecting}
+          selected={selected.includes(f.id)}
           onPress={() => (selecting ? toggle(f.id) : router.push({ pathname: '/fish/[id]', params: { id: f.id } }))}
           onLongPress={() => {
             setSelecting(true);
             toggle(f.id);
           }}
-          accessibilityState={selecting ? { selected: selected.includes(f.id) } : undefined}
-          style={({ pressed }) => [
-            styles.row,
-            { backgroundColor: theme.backgroundElement, opacity: pressed ? 0.75 : 1 },
-            selecting && selected.includes(f.id) && { borderWidth: 2, borderColor: theme.accent },
-          ]}>
-          {data?.thumbs[f.id] ? (
-            <Image source={{ uri: data.thumbs[f.id] }} style={styles.thumb} contentFit="cover" />
-          ) : (
-            <View style={[styles.thumb, { backgroundColor: theme.backgroundSelected }]} />
-          )}
-          <View style={{ flex: 1 }}>
-            <Text style={[styles.title, { color: theme.text }]}>{f.fish_code}</Text>
-            <Text style={{ color: theme.textSecondary }}>
-              {[f.name, f.strain, labelOf(SEXES, f.sex), formatAge(f.date_of_birth)].filter(Boolean).join(' · ')}
-            </Text>
-            <Text style={{ color: theme.textSecondary }}>
-              {[labelOf(FISH_STATUSES, f.status), f.tank_id ? data?.tankNames[f.tank_id] : null]
-                .filter(Boolean)
-                .join(' · ')}
-            </Text>
-          </View>
-          {selecting ? (
-            <Icon
-              name={selected.includes(f.id) ? Icons.done : Icons.circle}
-              size={24}
-              color={selected.includes(f.id) ? theme.accent : theme.textSecondary}
-            />
-          ) : null}
-        </Pressable>
+        />
       )}
     />
   );
 }
 
 const styles = StyleSheet.create({
-  row: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three, padding: Spacing.two + 4, borderRadius: 12 },
-  thumb: { width: 64, height: 64, borderRadius: 8 },
-  title: { fontSize: 16, fontWeight: '600' },
   selectBar: { gap: Spacing.two },
   actions: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
 });

@@ -1,6 +1,7 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
 
+import { LineSpawn } from '@/components/line-icons';
 import { ChipSelect, Empty, ErrorText, ListRow, Loading, Muted, Screen } from '@/components/ui';
 import { Icons } from '@/constants/icons';
 import { listFish, listSpawnEvents, listSpawns } from '@/lib/db';
@@ -44,12 +45,12 @@ export default function SpawnResultsScreen() {
         Survival counts the losses you log in each batch. Keepers are fry picked to become fish. Best producers are at the top.
       </Muted>
       <ChipSelect label="Show" options={VIEWS} value={view} onChange={(v) => v && setView(v)} />
-      {rows.length === 0 ? <Empty>No spawns yet. Results show here once you record spawns.</Empty> : null}
+      {rows.length === 0 ? <Empty art={<LineSpawn size={44} />}>No spawns yet. Results show here once you record spawns.</Empty> : null}
       {view === 'spawn'
         ? rows.map(({ spawn: s, result: r }) => (
             <ListRow
               key={s.id}
-              icon={Icons.spawn}
+              icon={<LineSpawn />}
               title={`${s.spawn_code} · ${code(s.sire_id)} × ${code(s.dam_id)}`}
               subtitle={[
                 `Born ${formatDate(s.born_on)}`,
