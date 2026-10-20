@@ -17,9 +17,18 @@ import { Spacing } from '@/constants/theme';
 import { ihsMaxTotal, labelOf, SEXES, TAIL_STANDARDS } from '@/lib/constants';
 import { formatDate } from '@/lib/format';
 import { useAuth } from '@/lib/auth';
-import { latestPhotoPaths, listAllShowEntries, listEvaluationSummaries, listEvaluations, listFish, signedPhotoUrls } from '@/lib/db';
+import {
+  getFish,
+  latestPhotoPaths,
+  listAncestors,
+  listBestScores,
+  listEvaluations,
+  listLittermates,
+  listShowEntriesForFish,
+  signedPhotoUrls,
+} from '@/lib/db';
 import { bestEvaluation, certificateHtml } from '@/lib/export';
-import { pedigreeColumns, relationLabel, repeatedAncestors } from '@/lib/pedigree';
+import { PEDIGREE_DEPTH, pedigreeColumns, relationLabel, repeatedAncestors } from '@/lib/pedigree';
 import { littermates, resultsByFish } from '@/lib/scores';
 import { imageDataUri, printHtml } from '@/lib/share';
 import type { Fish } from '@/lib/types';
@@ -102,8 +111,14 @@ export default function PedigreeScreen() {
   useEffect(() => {
     AccessibilityInfo.isScreenReaderEnabled().then((on) => on && setView('list'));
   }, []);
+  // Only the fish, the generations the tree shows and its littermates are fetched, with their results.
   const { data, error } = useFocusData(async () => {
-    const [fish, scores, shows] = await Promise.all([listFish(), listEvaluationSummaries(), listAllShowEntries()]);
+    const self = await getFish(id);
+    if (!self) return { fish: [] as Fish[], results: new Map<string, string>() };
+    const [ancestors, siblings] = await Promise.all([listAncestors(self, PEDIGREE_DEPTH), listLittermates(self)]);
+    const fish = [self, ...ancestors, ...siblings];
+    const ids = fish.map((f) => f.id);
+    const [scores, shows] = await Promise.all([listBestScores(ids), listShowEntriesForFish(ids)]);
     return { fish, results: resultsByFish(scores, shows) };
   });
 

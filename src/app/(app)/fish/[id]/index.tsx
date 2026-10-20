@@ -64,18 +64,20 @@ export default function FishScreen() {
     setBusy(false);
   }
 
-  const byId = Object.fromEntries(data.allFish.map((f) => [f.id, f]));
+  // Inbreeding only looks up the tree, so the fish and its recorded ancestors are enough.
+  const lineage = [fish, ...data.ancestors];
+  const byId = Object.fromEntries(lineage.map((f) => [f.id, f]));
   const ctx: FishPageContext = {
     id,
     fish,
     data,
-    kin: makeKinship(data.allFish),
+    kin: makeKinship(lineage),
     sire: fish.sire_id ? byId[fish.sire_id] ?? null : null,
     dam: fish.dam_id ? byId[fish.dam_id] ?? null : null,
-    siblings: littermates(fish, data.allFish),
-    offspring: data.allFish.filter((f) => f.sire_id === id || f.dam_id === id),
-    fromSpawn: fish.spawn_id ? data.spawns.find((s) => s.id === fish.spawn_id) : null,
-    parentOf: data.spawns.filter((s) => s.sire_id === id || s.dam_id === id),
+    siblings: littermates(fish, data.siblings),
+    offspring: data.offspring,
+    fromSpawn: data.fromSpawn,
+    parentOf: data.parentOf,
     busy,
     photoWidth: width - Spacing.three * 2,
     addPhoto: async (source) => {

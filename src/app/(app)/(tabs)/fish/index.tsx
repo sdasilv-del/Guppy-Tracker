@@ -8,7 +8,7 @@ import { Button, ChipSelect, Empty, ErrorText, Field, Icon, ListScreen, Loading,
 import { Icons } from '@/constants/icons';
 import { Spacing } from '@/constants/theme';
 import { FISH_STATUSES, INACTIVE_STATUSES, labelOf, SEXES, type Sex, TAIL_OPTIONS, type TailStandard } from '@/lib/constants';
-import { latestPhotoPaths, listFish, listTanks, signedPhotoUrls } from '@/lib/db';
+import { latestPhotoPaths, listFish, listTanks, signedThumbnailUrls } from '@/lib/db';
 import { formatAge } from '@/lib/format';
 import { useFocusData } from '@/lib/use-data';
 import { useTheme } from '@/hooks/use-theme';
@@ -71,7 +71,8 @@ export default function FishListScreen() {
   const { data, error, reload } = useFocusData(async () => {
     const [fish, tanks] = await Promise.all([listFish(), listTanks()]);
     const paths = await latestPhotoPaths(fish.map((f) => f.id));
-    const urls = await signedPhotoUrls(Object.values(paths));
+    // Small thumbnails for the rows; older photos without one show the full photo.
+    const urls = await signedThumbnailUrls(Object.values(paths));
     const thumbs: Record<string, string> = {};
     for (const [fishId, path] of Object.entries(paths)) if (urls[path]) thumbs[fishId] = urls[path];
     return {

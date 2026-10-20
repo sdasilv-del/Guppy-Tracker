@@ -14,7 +14,7 @@ import {
   listAllShowEntries,
   listAllWaterTests,
   listCustomReminders,
-  listEvaluationSummaries,
+  listEvaluationSummariesSince,
   listFish,
   listGroups,
   listSales,
@@ -136,7 +136,8 @@ export default function HomeScreen() {
     // Insights are extra: if any of these fail, Home still shows counts and reminders.
     const insights = await Promise.all([
       listAllWaterTests(),
-      listEvaluationSummaries(),
+      // Only this year's scores: the insight names the top fish of the season.
+      listEvaluationSummariesSince(`${today.slice(0, 4)}-01-01`),
       listAllShowEntries(),
       listSales(),
       listGroups(),
