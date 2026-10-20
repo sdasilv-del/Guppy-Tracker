@@ -24,6 +24,7 @@ import { SyncBanner } from '@/components/sync-banner';
 import { type IconName, Icons } from '@/constants/icons';
 import { Spacing } from '@/constants/theme';
 import { formatDate, fromISODate, toISODate } from '@/lib/format';
+import { clearReadCache } from '@/lib/offline';
 import { useTheme } from '@/hooks/use-theme';
 
 // Drag-down-to-reload for a screen, with the spinner shown until the reload finishes.
@@ -38,6 +39,7 @@ function useRefresh(onRefresh?: () => Promise<unknown>) {
       colors={[theme.accent]}
       onRefresh={() => {
         setRefreshing(true);
+        clearReadCache();
         onRefresh().finally(() => setRefreshing(false));
       }}
     />
